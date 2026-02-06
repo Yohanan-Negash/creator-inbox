@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "whop": {
+      "type": "remote",
+      "url": "https://mcp.whop.com/sse",
+      "enabled": true
+    }
+  }
+}
