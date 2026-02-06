@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as requestTypes from "../requestTypes.js";
 import type * as submissions from "../submissions.js";
 
 import type {
@@ -17,6 +18,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  requestTypes: typeof requestTypes;
   submissions: typeof submissions;
 }>;
 

@@ -25,6 +25,7 @@ export default defineSchema({
     isActive: v.boolean(),
   })
     .index("by_experience_creator", ["experienceId", "creatorId"])
+    .index("by_experience_active", ["experienceId", "isActive"])
     .index("by_creator_active", ["creatorId", "isActive"]),
   submissions: defineTable({
     experienceId: v.string(),
@@ -39,6 +40,7 @@ export default defineSchema({
   })
     .index("by_creator_status", ["creatorId", "status"])
     .index("by_experience_status", ["experienceId", "status"])
+    .index("by_experience_user", ["experienceId", "userId"])
     .index("by_user", ["userId"])
     .index("by_request_type", ["requestTypeId"]),
 });
