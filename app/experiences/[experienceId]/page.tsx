@@ -62,9 +62,6 @@ export default function ExperiencePage({
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-4 p-6">
       <h1 className="text-2xl font-semibold">Experience: {experienceId}</h1>
-      <p className="text-sm text-zinc-600">
-        Simple Whop setup page. It calls <code>/api/whop/user</code>.
-      </p>
 
       <section className="rounded-md border border-zinc-200 bg-zinc-50 p-4">
         <h2 className="mb-2 text-sm font-medium">API response</h2>
