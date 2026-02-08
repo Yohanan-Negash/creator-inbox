@@ -37,6 +37,7 @@ export default defineSchema({
     requestTypeTitleSnapshot: v.string(),
     amountUsd: v.number(),
     responseWindowHoursSnapshot: v.number(),
+    submissionText: v.string(),
     createdAt: v.number(),
     status: submissionStatus,
     paymentStatus,

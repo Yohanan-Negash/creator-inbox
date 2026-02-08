@@ -3,6 +3,16 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 
+const MIN_SUBMISSION_TEXT_LENGTH = 8;
+
+function ensureValidSubmissionText(submissionText: string) {
+  if (submissionText.trim().length < MIN_SUBMISSION_TEXT_LENGTH) {
+    throw new Error(
+      `Submission text must be at least ${MIN_SUBMISSION_TEXT_LENGTH} characters.`,
+    );
+  }
+}
+
 async function listCreatorSubmissionsForExperience(
   ctx: QueryCtx,
   experienceId: string,
@@ -106,7 +116,25 @@ export const listVisibleForUser = query({
       map.set(item._id, item);
     }
 
-    return Array.from(map.values());
+    const combined = Array.from(map.values()).sort((a, b) => b.createdAt - a.createdAt);
+
+    return await Promise.all(
+      combined.map(async (submission) => {
+        const requestType = await ctx.db.get(
+          submission.requestTypeId as Id<"requestTypes">,
+        );
+        const requestTypeLabel = requestType
+          ? requestType.isDeleted === true || requestType.isActive === false
+            ? "Request type no longer active"
+            : requestType.title ?? submission.requestTypeTitleSnapshot
+          : "Request type no longer active";
+
+        return {
+          ...submission,
+          requestTypeLabel,
+        };
+      }),
+    );
   },
 });
 
@@ -139,8 +167,11 @@ export const createSubmission = mutation({
     requestTypeId: v.id("requestTypes"),
     viewerUserId: v.string(),
     viewerUserName: v.string(),
+    submissionText: v.string(),
   },
   handler: async (ctx, args) => {
+    ensureValidSubmissionText(args.submissionText);
+
     const requestType = await ctx.db.get(args.requestTypeId);
     if (!requestType) {
       throw new Error("Request type not found.");
@@ -163,6 +194,7 @@ export const createSubmission = mutation({
       requestTypeTitleSnapshot: requestType.title,
       amountUsd: requestType.price,
       responseWindowHoursSnapshot: requestType.responseWindowHours,
+      submissionText: args.submissionText,
       createdAt: Date.now(),
       status: "pending",
       paymentStatus: "held",

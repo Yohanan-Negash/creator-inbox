@@ -166,7 +166,7 @@ export default function AdminPage({
 
   const [data, setData] = useState<WhopResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState<AdminView>("request-types");
+  const [activeView, setActiveView] = useState<AdminView>("metrics");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRequestTypeId, setEditingRequestTypeId] = useState<Id<"requestTypes"> | null>(null);
   const [formValues, setFormValues] = useState<RequestTypeFormValues>(defaultFormValues);
