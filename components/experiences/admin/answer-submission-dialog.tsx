@@ -1,5 +1,3 @@
-import type { SubmitEvent } from "react";
-import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,78 +7,50 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 
 type SelectedSubmission = {
   userName: string;
   requestTypeLabel: string;
+  responseText?: string;
 } | null;
 
 type AnswerSubmissionDialogProps = {
   open: boolean;
-  answerPending: boolean;
   selectedSubmission: SelectedSubmission;
-  answerResponseText: string;
-  answerError: string | null;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
-  onAnswerResponseTextChange: (value: string) => void;
-  onCancel: () => void;
+  onClose: () => void;
 };
 
 export function AnswerSubmissionDialog({
   open,
-  answerPending,
   selectedSubmission,
-  answerResponseText,
-  answerError,
   onOpenChange,
-  onSubmit,
-  onAnswerResponseTextChange,
-  onCancel,
+  onClose,
 }: AnswerSubmissionDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <form className="grid gap-3" onSubmit={onSubmit}>
+        <div className="grid gap-3">
           <DialogHeader>
-            <DialogTitle>Respond to submission</DialogTitle>
+            <DialogTitle>Submission response</DialogTitle>
             <DialogDescription>
               {selectedSubmission
-                ? `Reply to ${selectedSubmission.userName} for ${selectedSubmission.requestTypeLabel}.`
-                : "Add a clear response for this submission."}
+                ? `${selectedSubmission.userName} · ${selectedSubmission.requestTypeLabel}`
+                : "View the response for this submission."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-1.5">
-            <label className="text-xs font-medium" htmlFor="submission-response-text">
-              Response
-            </label>
-            <Textarea
-              id="submission-response-text"
-              value={answerResponseText}
-              onChange={(event) => onAnswerResponseTextChange(event.target.value)}
-              placeholder="Write a helpful and specific response..."
-              disabled={answerPending}
-              className="min-h-28"
-            />
-            {answerError ? <p className="text-xs text-red-600">{answerError}</p> : null}
+            <p className="text-xs font-medium">Creator response</p>
+            <div className="min-h-28 whitespace-pre-wrap rounded-none border border-zinc-200 p-3 text-xs text-zinc-700">
+              {selectedSubmission?.responseText?.trim() || "No response available."}
+            </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onCancel} disabled={answerPending}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={answerPending}>
-              {answerPending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Submit response"
-              )}
+            <Button type="button" variant="outline" onClick={onClose}>
+              Close
             </Button>
           </DialogFooter>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

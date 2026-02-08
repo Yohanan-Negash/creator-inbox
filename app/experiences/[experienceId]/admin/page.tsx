@@ -70,14 +70,6 @@ const requestTypeFormSchema = z.object({
     .positive("Response window must be greater than 0."),
 });
 
-const answerSubmissionSchema = z.object({
-  responseText: z
-    .string()
-    .trim()
-    .min(4, "Response must be at least 4 characters.")
-    .max(2000, "Response must be at most 2000 characters."),
-});
-
 const defaultFormValues: RequestTypeFormValues = {
   title: "",
   description: "",
@@ -122,9 +114,6 @@ export default function AdminPage({
   const [currentPage, setCurrentPage] = useState(1);
   const [submissionsPage, setSubmissionsPage] = useState(1);
   const [answerDialogSubmissionId, setAnswerDialogSubmissionId] = useState<Id<"submissions"> | null>(null);
-  const [answerResponseText, setAnswerResponseText] = useState("");
-  const [answerError, setAnswerError] = useState<string | null>(null);
-  const [answerPending, setAnswerPending] = useState(false);
 
   const viewerUserId = data?.user?.id ?? "";
 
@@ -154,7 +143,6 @@ export default function AdminPage({
   const archiveRequestType = useMutation(api.requestTypes.archiveRequestType);
   const unarchiveRequestType = useMutation(api.requestTypes.unarchiveRequestType);
   const softDeleteRequestType = useMutation(api.requestTypes.softDeleteRequestType);
-  const answerSubmission = useMutation(api.submissions.answerSubmission);
 
   const pageSize = 4;
   const totalPages = useMemo(() => {
@@ -481,49 +469,16 @@ export default function AdminPage({
   }
 
   function openAnswerDialog(submissionId: Id<"submissions">) {
+    const submission = dashboardSubmissions?.find((item) => item._id === submissionId);
+    if (!submission) {
+      return;
+    }
+
+    if (submission.status !== "answered") {
+      return;
+    }
+
     setAnswerDialogSubmissionId(submissionId);
-    setAnswerResponseText("");
-    setAnswerError(null);
-  }
-
-  async function handleAnswerSubmissionSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!answerDialogSubmissionId) {
-      return;
-    }
-
-    if (!viewerUserId) {
-      setAnswerError("Unable to verify your user account. Please refresh and try again.");
-      return;
-    }
-
-    const parsed = answerSubmissionSchema.safeParse({
-      responseText: answerResponseText,
-    });
-
-    if (!parsed.success) {
-      const flattened = z.flattenError(parsed.error);
-      setAnswerError(flattened.fieldErrors.responseText?.[0] ?? "Invalid response.");
-      return;
-    }
-
-    setAnswerPending(true);
-    setAnswerError(null);
-
-    try {
-      await answerSubmission({
-        submissionId: answerDialogSubmissionId,
-        viewerUserId,
-        responseText: parsed.data.responseText,
-      });
-      setAnswerDialogSubmissionId(null);
-      setAnswerResponseText("");
-    } catch (error) {
-      setAnswerError(getErrorMessage(error, "Failed to submit response."));
-    } finally {
-      setAnswerPending(false);
-    }
   }
 
   const homeHref = `/experiences/${encodeURIComponent(experienceId)}${devUserToken ? `?whop-dev-user-token=${encodeURIComponent(devUserToken)}` : ""}`;
@@ -653,29 +608,14 @@ export default function AdminPage({
 
           <AnswerSubmissionDialog
             open={Boolean(answerDialogSubmissionId)}
-            answerPending={answerPending}
             selectedSubmission={selectedSubmission}
-            answerResponseText={answerResponseText}
-            answerError={answerError}
             onOpenChange={(open) => {
-              if (answerPending) {
-                return;
-              }
               if (!open) {
                 setAnswerDialogSubmissionId(null);
-                setAnswerError(null);
-                setAnswerResponseText("");
               }
             }}
-            onSubmit={handleAnswerSubmissionSubmit}
-            onAnswerResponseTextChange={setAnswerResponseText}
-            onCancel={() => {
-              if (answerPending) {
-                return;
-              }
+            onClose={() => {
               setAnswerDialogSubmissionId(null);
-              setAnswerError(null);
-              setAnswerResponseText("");
             }}
           />
         </section>

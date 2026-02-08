@@ -225,6 +225,12 @@ export const answerSubmission = mutation({
       throw new Error("Submission is not pending.");
     }
 
+    const deadlineAt =
+      existing.createdAt + existing.responseWindowHoursSnapshot * 60 * 60 * 1000;
+    if (Date.now() > deadlineAt) {
+      throw new Error("Response window has expired for this submission.");
+    }
+
     await ctx.db.patch(args.submissionId, {
       responseText: args.responseText,
       status: "answered",

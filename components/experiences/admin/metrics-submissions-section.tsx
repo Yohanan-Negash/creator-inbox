@@ -105,7 +105,7 @@ export function MetricsSubmissionsSection({
       <Card>
         <CardHeader>
           <CardTitle>Submissions</CardTitle>
-          <CardDescription>Click a pending submission row to respond.</CardDescription>
+          <CardDescription>Click an answered submission row to view the response.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           {dashboardSubmissions === undefined ? (
@@ -133,13 +133,13 @@ export function MetricsSubmissionsSection({
               </TableHeader>
               <TableBody>
                 {pagedSubmissions.map((submission) => {
-                  const isPending = submission.status === "pending";
+                  const canOpenResponse = submission.status === "answered";
                   return (
                     <TableRow
                       key={String(submission._id)}
-                      className={isPending ? "cursor-pointer" : ""}
+                      className={canOpenResponse ? "cursor-pointer" : ""}
                       onClick={() => {
-                        if (!isPending) {
+                        if (!canOpenResponse) {
                           return;
                         }
                         onOpenAnswerDialog(submission._id);
