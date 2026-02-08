@@ -1,0 +1,228 @@
+import type { SubmitEvent } from "react";
+import { BotIcon, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { REQUEST_TYPE_DESCRIPTION_MAX_LENGTH } from "@/lib/request-types/constants";
+
+type RequestTypeFormValues = {
+  title: string;
+  description: string;
+  price: string;
+  responseWindowHours: string;
+};
+
+type RequestTypeFieldErrors = Partial<Record<keyof RequestTypeFormValues, string>>;
+
+type RequestTypeFormDialogProps = {
+  dialogOpen: boolean;
+  editingRequestTypeId: string | null;
+  formValues: RequestTypeFormValues;
+  fieldErrors: RequestTypeFieldErrors;
+  submitError: string | null;
+  submitPending: boolean;
+  generatePending: boolean;
+  generateError: string | null;
+  onOpenChange: (open: boolean) => void;
+  onOpenCreateDialog: () => void;
+  onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
+  onCloseDialog: () => void;
+  onGenerateWithAi: () => void;
+  onFormChange: (next: RequestTypeFormValues) => void;
+};
+
+export function RequestTypeFormDialog({
+  dialogOpen,
+  editingRequestTypeId,
+  formValues,
+  fieldErrors,
+  submitError,
+  submitPending,
+  generatePending,
+  generateError,
+  onOpenChange,
+  onOpenCreateDialog,
+  onSubmit,
+  onCloseDialog,
+  onGenerateWithAi,
+  onFormChange,
+}: RequestTypeFormDialogProps) {
+  return (
+    <Dialog open={dialogOpen} onOpenChange={onOpenChange}>
+      <DialogTrigger render={<Button size="sm" />} onClick={onOpenCreateDialog}>
+        Create request type
+      </DialogTrigger>
+      <DialogContent showCloseButton={false} className="sm:max-w-lg">
+        <form className="grid gap-4" onSubmit={onSubmit}>
+          <DialogHeader>
+            <DialogTitle>{editingRequestTypeId ? "Edit request type" : "Create request type"}</DialogTitle>
+            <DialogDescription>
+              Keep it simple: title, short description, price, and response window.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-1.5">
+            <label className="text-xs font-medium" htmlFor="request-type-title">
+              Title
+            </label>
+            <Input
+              id="request-type-title"
+              value={formValues.title}
+              onChange={(event) =>
+                onFormChange({
+                  ...formValues,
+                  title: event.target.value,
+                })
+              }
+              aria-invalid={Boolean(fieldErrors.title)}
+              placeholder="Ask me Anything"
+              disabled={submitPending || generatePending}
+            />
+            {fieldErrors.title ? <p className="text-xs text-red-600">{fieldErrors.title}</p> : null}
+          </div>
+
+          <div className="grid gap-1.5">
+            <label className="text-xs font-medium" htmlFor="request-type-description">
+              Description
+            </label>
+            <Textarea
+              id="request-type-description"
+              className="min-h-24"
+              maxLength={REQUEST_TYPE_DESCRIPTION_MAX_LENGTH}
+              value={formValues.description}
+              onChange={(event) =>
+                onFormChange({
+                  ...formValues,
+                  description: event.target.value.slice(0, REQUEST_TYPE_DESCRIPTION_MAX_LENGTH),
+                })
+              }
+              aria-invalid={Boolean(fieldErrors.description)}
+              placeholder="Ask any question and I will reply with a clear, practical answer."
+              disabled={submitPending || generatePending}
+            />
+            {fieldErrors.description ? (
+              <p className="text-xs text-red-600">{fieldErrors.description}</p>
+            ) : null}
+            <p
+              className={`text-right text-[11px] ${
+                formValues.description.length >= REQUEST_TYPE_DESCRIPTION_MAX_LENGTH
+                  ? "text-red-600"
+                  : "text-zinc-500"
+              }`}
+            >
+              {formValues.description.length}/{REQUEST_TYPE_DESCRIPTION_MAX_LENGTH}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="grid gap-1.5">
+              <label className="text-xs font-medium" htmlFor="request-type-price">
+                Price (USD)
+              </label>
+              <Input
+                id="request-type-price"
+                type="number"
+                min="1"
+                step="0.01"
+                value={formValues.price}
+                onChange={(event) =>
+                  onFormChange({
+                    ...formValues,
+                    price: event.target.value,
+                  })
+                }
+                aria-invalid={Boolean(fieldErrors.price)}
+                placeholder="5"
+                disabled={submitPending || generatePending}
+              />
+              {fieldErrors.price ? <p className="text-xs text-red-600">{fieldErrors.price}</p> : null}
+            </div>
+
+            <div className="grid gap-1.5">
+              <label className="text-xs font-medium" htmlFor="request-type-window">
+                Response window (hours)
+              </label>
+              <Input
+                id="request-type-window"
+                type="number"
+                min="1"
+                step="1"
+                value={formValues.responseWindowHours}
+                onChange={(event) =>
+                  onFormChange({
+                    ...formValues,
+                    responseWindowHours: event.target.value,
+                  })
+                }
+                aria-invalid={Boolean(fieldErrors.responseWindowHours)}
+                placeholder="12"
+                disabled={submitPending || generatePending}
+              />
+              {fieldErrors.responseWindowHours ? (
+                <p className="text-xs text-red-600">{fieldErrors.responseWindowHours}</p>
+              ) : null}
+            </div>
+          </div>
+
+          <DialogFooter className="grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+            <div className="flex flex-col gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                className="border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary"
+                onClick={onGenerateWithAi}
+                disabled={submitPending || generatePending}
+              >
+                {generatePending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <BotIcon className="size-4" />
+                    Generate with AI
+                  </>
+                )}
+              </Button>
+              {generateError ? <p className="text-xs text-red-600">{generateError}</p> : null}
+            </div>
+            <div className="flex flex-col gap-1">
+              <Button type="submit" disabled={submitPending || generatePending}>
+                {submitPending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    {editingRequestTypeId ? "Saving..." : "Creating..."}
+                  </>
+                ) : editingRequestTypeId ? (
+                  "Save changes"
+                ) : (
+                  "Create"
+                )}
+              </Button>
+              {submitError ? <p className="text-xs text-red-600">{submitError}</p> : null}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-800"
+              onClick={onCloseDialog}
+              disabled={submitPending}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

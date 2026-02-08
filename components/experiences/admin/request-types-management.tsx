@@ -1,0 +1,233 @@
+import type { Id } from "@/convex/_generated/dataModel";
+import { Loader2, Trash2Icon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Switch } from "@/components/ui/switch";
+
+type RequestTypeItem = {
+  _id: Id<"requestTypes">;
+  title: string;
+  description: string;
+  price: number;
+  responseWindowHours: number;
+  isActive: boolean;
+};
+
+type RequestTypesManagementProps = {
+  requestTypes: RequestTypeItem[] | undefined;
+  pagedRequestTypes: RequestTypeItem[];
+  pageSize: number;
+  totalPages: number;
+  currentPage: number;
+  statusError: string | null;
+  deleteError: string | null;
+  submitPending: boolean;
+  statusPendingId: string | null;
+  deletePendingId: string | null;
+  deleteConfirmId: Id<"requestTypes"> | null;
+  onEdit: (item: RequestTypeItem) => void;
+  onToggleStatus: (requestTypeId: Id<"requestTypes">, checked: boolean) => void;
+  onSetDeleteConfirmId: (id: Id<"requestTypes"> | null) => void;
+  onSetCurrentPage: (page: number) => void;
+  onConfirmDelete: () => void;
+};
+
+export function RequestTypesManagement({
+  requestTypes,
+  pagedRequestTypes,
+  pageSize,
+  totalPages,
+  currentPage,
+  statusError,
+  deleteError,
+  submitPending,
+  statusPendingId,
+  deletePendingId,
+  deleteConfirmId,
+  onEdit,
+  onToggleStatus,
+  onSetDeleteConfirmId,
+  onSetCurrentPage,
+  onConfirmDelete,
+}: RequestTypesManagementProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Request types</CardTitle>
+        <CardDescription>
+          Create and edit request types. Use the switch to control whether each request type is
+          visible to members in your experience. Use the trash button to remove it from the list.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        {requestTypes === undefined ? (
+          <div className="flex items-center gap-2 text-xs text-zinc-500">
+            <Loader2 className="size-4 animate-spin" />
+            Loading request types...
+          </div>
+        ) : null}
+
+        {requestTypes !== undefined && requestTypes.length === 0 ? (
+          <p className="text-xs text-zinc-500">No request types yet.</p>
+        ) : null}
+
+        {statusError ? <p className="text-xs text-red-600">{statusError}</p> : null}
+        {deleteError ? <p className="text-xs text-red-600">{deleteError}</p> : null}
+
+        {requestTypes && requestTypes.length > 0 ? (
+          <div className="grid gap-3">
+            {pagedRequestTypes.map((item) => {
+              const itemId = String(item._id);
+              const isUpdatingStatus = statusPendingId === itemId;
+              const isDeleting = deletePendingId === itemId;
+              const isRowBusy = isUpdatingStatus || isDeleting;
+
+              return (
+                <div
+                  key={itemId}
+                  className="flex flex-col gap-3 border border-zinc-200 p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">{item.title}</p>
+                    <p className="text-xs text-zinc-500">{item.description}</p>
+                    <p className="text-xs text-zinc-500">
+                      ${item.price.toFixed(2)} · {item.responseWindowHours}h response window ·{" "}
+                      {item.isActive ? "Active" : "Archived"}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onEdit(item)}
+                      disabled={submitPending || isRowBusy}
+                    >
+                      Edit
+                    </Button>
+                    <div className="flex items-center gap-2">
+                      {isRowBusy ? <Loader2 className="size-4 animate-spin text-zinc-500" /> : null}
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        className="border-primary bg-white text-red-600 hover:bg-primary/5 hover:text-red-700"
+                        onClick={() => onSetDeleteConfirmId(item._id)}
+                        disabled={isRowBusy}
+                        aria-label={`Delete ${item.title}`}
+                      >
+                        <Trash2Icon className="size-4" />
+                      </Button>
+                      <Switch
+                        checked={item.isActive}
+                        disabled={isRowBusy}
+                        onCheckedChange={(checked) => onToggleStatus(item._id, checked)}
+                        aria-label={`Set ${item.title} visibility for members`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {requestTypes && requestTypes.length > pageSize ? (
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onSetCurrentPage(Math.max(1, currentPage - 1));
+                  }}
+                  className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+              {Array.from({ length: totalPages }, (_, index) => {
+                const pageNumber = index + 1;
+                return (
+                  <PaginationItem key={pageNumber}>
+                    <PaginationLink
+                      href="#"
+                      isActive={pageNumber === currentPage}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        onSetCurrentPage(pageNumber);
+                      }}
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              })}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onSetCurrentPage(Math.min(totalPages, currentPage + 1));
+                  }}
+                  className={currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        ) : null}
+
+        <AlertDialog open={Boolean(deleteConfirmId)} onOpenChange={(open) => !open && onSetDeleteConfirmId(null)}>
+          <AlertDialogContent size="sm">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete request type?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently remove this request type from your list. This action cannot
+                be undone and is non-recoverable.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={Boolean(deletePendingId)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-white hover:bg-destructive/90"
+                onClick={onConfirmDelete}
+                disabled={Boolean(deletePendingId)}
+              >
+                {deletePendingId ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </CardContent>
+    </Card>
+  );
+}
