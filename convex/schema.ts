@@ -49,4 +49,14 @@ export default defineSchema({
     .index("by_experience_user", ["experienceId", "userId"])
     .index("by_user", ["userId"])
     .index("by_request_type", ["requestTypeId"]),
+  creatorMetrics: defineTable({
+    creatorId: v.string(),
+    experienceId: v.string(),
+    totalSubmissions: v.number(),
+    totalPending: v.number(),
+    totalAnswered: v.number(),
+    moneyEarned: v.number(),
+    moneyAvailable: v.number(),
+    updatedAt: v.number(),
+  }).index("by_creator_experience", ["creatorId", "experienceId"]),
 });

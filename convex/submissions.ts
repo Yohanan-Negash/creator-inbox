@@ -1,7 +1,7 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import type { QueryCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 
 const MIN_SUBMISSION_TEXT_LENGTH = 8;
 
@@ -10,6 +10,95 @@ function ensureValidSubmissionText(submissionText: string) {
     throw new Error(
       `Submission text must be at least ${MIN_SUBMISSION_TEXT_LENGTH} characters.`,
     );
+  }
+}
+
+type CreatorMetricsDelta = {
+  totalSubmissions?: number;
+  totalPending?: number;
+  totalAnswered?: number;
+  moneyEarned?: number;
+  moneyAvailable?: number;
+};
+
+type CreatorMetricsSnapshot = {
+  totalSubmissions: number;
+  totalPending: number;
+  totalAnswered: number;
+  moneyEarned: number;
+  moneyAvailable: number;
+};
+
+function clampMetricValue(value: number) {
+  return Math.max(0, value);
+}
+
+async function applyCreatorMetricsDelta(
+  ctx: MutationCtx,
+  args: {
+    creatorId: string;
+    experienceId: string;
+    delta: CreatorMetricsDelta;
+  },
+) {
+  const rows = await ctx.db
+    .query("creatorMetrics")
+    .withIndex("by_creator_experience", (q) =>
+      q.eq("creatorId", args.creatorId).eq("experienceId", args.experienceId),
+    )
+    .collect();
+
+  const current = rows.reduce(
+    (acc, row) => ({
+      totalSubmissions: acc.totalSubmissions + row.totalSubmissions,
+      totalPending: acc.totalPending + row.totalPending,
+      totalAnswered: acc.totalAnswered + row.totalAnswered,
+      moneyEarned: acc.moneyEarned + row.moneyEarned,
+      moneyAvailable: acc.moneyAvailable + row.moneyAvailable,
+    }),
+    {
+      totalSubmissions: 0,
+      totalPending: 0,
+      totalAnswered: 0,
+      moneyEarned: 0,
+      moneyAvailable: 0,
+    },
+  );
+
+  const next = {
+    totalSubmissions: clampMetricValue(
+      current.totalSubmissions + (args.delta.totalSubmissions ?? 0),
+    ),
+    totalPending: clampMetricValue(current.totalPending + (args.delta.totalPending ?? 0)),
+    totalAnswered: clampMetricValue(
+      current.totalAnswered + (args.delta.totalAnswered ?? 0),
+    ),
+    moneyEarned: clampMetricValue(current.moneyEarned + (args.delta.moneyEarned ?? 0)),
+    moneyAvailable: clampMetricValue(
+      current.moneyAvailable + (args.delta.moneyAvailable ?? 0),
+    ),
+  };
+
+  const now = Date.now();
+
+  if (rows.length === 0) {
+    await ctx.db.insert("creatorMetrics", {
+      creatorId: args.creatorId,
+      experienceId: args.experienceId,
+      ...next,
+      updatedAt: now,
+    });
+    return;
+  }
+
+  const [primary, ...duplicates] = rows;
+  await ctx.db.patch(primary._id, {
+    ...next,
+    updatedAt: now,
+  });
+
+  for (const duplicate of duplicates) {
+    await ctx.db.delete(duplicate._id);
   }
 }
 
@@ -200,6 +289,16 @@ export const createSubmission = mutation({
       paymentStatus: "held",
     });
 
+    await applyCreatorMetricsDelta(ctx, {
+      creatorId: requestType.creatorId,
+      experienceId: args.experienceId,
+      delta: {
+        totalSubmissions: 1,
+        totalPending: 1,
+        moneyAvailable: requestType.price,
+      },
+    });
+
     return await ctx.db.get(submissionId);
   },
 });
@@ -236,6 +335,17 @@ export const answerSubmission = mutation({
       status: "answered",
       paymentStatus: "released",
       answeredAt: Date.now(),
+    });
+
+    await applyCreatorMetricsDelta(ctx, {
+      creatorId: existing.creatorId,
+      experienceId: existing.experienceId,
+      delta: {
+        totalPending: -1,
+        totalAnswered: 1,
+        moneyEarned: existing.amountUsd,
+        moneyAvailable: -existing.amountUsd,
+      },
     });
 
     return await ctx.db.get(args.submissionId);
@@ -286,32 +396,35 @@ export const getAdminMetrics = query({
     viewerUserId: v.string(),
   },
   handler: async (ctx, args) => {
-    const submissions = await listCreatorSubmissionsForExperience(
-      ctx,
-      args.experienceId,
-      args.viewerUserId,
+    const metricsRows = await ctx.db
+      .query("creatorMetrics")
+      .withIndex("by_creator_experience", (q) =>
+        q.eq("creatorId", args.viewerUserId).eq("experienceId", args.experienceId),
+      )
+      .collect();
+
+    const totals = metricsRows.reduce(
+      (acc, row) => ({
+        totalSubmissions: acc.totalSubmissions + row.totalSubmissions,
+        totalPending: acc.totalPending + row.totalPending,
+        totalAnswered: acc.totalAnswered + row.totalAnswered,
+        moneyEarned: acc.moneyEarned + row.moneyEarned,
+        moneyAvailable: acc.moneyAvailable + row.moneyAvailable,
+      }),
+      {
+        totalSubmissions: 0,
+        totalPending: 0,
+        totalAnswered: 0,
+        moneyEarned: 0,
+        moneyAvailable: 0,
+      },
     );
 
-    const now = Date.now();
-    const totalSubmissions = submissions.length;
-    const totalPending = submissions.filter((item) => item.status === "pending").length;
-    const totalAnswered = submissions.filter((item) => item.status === "answered").length;
-
-    const moneyEarned = submissions
-      .filter((item) => item.status === "answered")
-      .reduce((sum, item) => sum + item.amountUsd, 0);
-
-    const moneyAvailable = submissions
-      .filter((item) => {
-        if (item.status !== "pending") {
-          return false;
-        }
-
-        const deadlineAt =
-          item.createdAt + item.responseWindowHoursSnapshot * 60 * 60 * 1000;
-        return now <= deadlineAt;
-      })
-      .reduce((sum, item) => sum + item.amountUsd, 0);
+    const totalSubmissions = totals.totalSubmissions;
+    const totalPending = totals.totalPending;
+    const totalAnswered = totals.totalAnswered;
+    const moneyEarned = totals.moneyEarned;
+    const moneyAvailable = totals.moneyAvailable;
 
     const totalRevenueOpportunity = moneyEarned + moneyAvailable;
     const earnedRate =
@@ -325,6 +438,74 @@ export const getAdminMetrics = query({
       moneyAvailable,
       totalRevenueOpportunity,
       earnedRate,
+    };
+  },
+});
+
+export const backfillCreatorMetrics = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const submissions = await ctx.db.query("submissions").collect();
+    const allMetrics = await ctx.db.query("creatorMetrics").collect();
+
+    for (const item of allMetrics) {
+      await ctx.db.delete(item._id);
+    }
+
+    const byCreatorExperience = new Map<string, {
+      creatorId: string;
+      experienceId: string;
+      snapshot: CreatorMetricsSnapshot;
+    }>();
+
+    for (const submission of submissions) {
+      const key = `${submission.creatorId}::${submission.experienceId}`;
+      const existing = byCreatorExperience.get(key) ?? {
+        creatorId: submission.creatorId,
+        experienceId: submission.experienceId,
+        snapshot: {
+          totalSubmissions: 0,
+          totalPending: 0,
+          totalAnswered: 0,
+          moneyEarned: 0,
+          moneyAvailable: 0,
+        },
+      };
+
+      existing.snapshot.totalSubmissions += 1;
+
+      if (submission.status === "pending") {
+        existing.snapshot.totalPending += 1;
+        existing.snapshot.moneyAvailable += submission.amountUsd;
+      }
+
+      if (submission.status === "answered") {
+        existing.snapshot.totalAnswered += 1;
+        existing.snapshot.moneyEarned += submission.amountUsd;
+      }
+
+      byCreatorExperience.set(key, existing);
+    }
+
+    const now = Date.now();
+
+    for (const item of byCreatorExperience.values()) {
+      await ctx.db.insert("creatorMetrics", {
+        creatorId: item.creatorId,
+        experienceId: item.experienceId,
+        totalSubmissions: item.snapshot.totalSubmissions,
+        totalPending: item.snapshot.totalPending,
+        totalAnswered: item.snapshot.totalAnswered,
+        moneyEarned: item.snapshot.moneyEarned,
+        moneyAvailable: item.snapshot.moneyAvailable,
+        updatedAt: now,
+      });
+    }
+
+    return {
+      submissionsProcessed: submissions.length,
+      creatorMetricsRowsCreated: byCreatorExperience.size,
+      existingCreatorMetricsRowsDeleted: allMetrics.length,
     };
   },
 });
