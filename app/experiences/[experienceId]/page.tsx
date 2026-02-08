@@ -97,7 +97,7 @@ export default function ExperiencePage({
             variant="outline"
             size="sm"
           >
-            Admin
+            Admin Page
           </Button>
         ) : null}
       </header>
@@ -164,18 +164,21 @@ export default function ExperiencePage({
           {requestTypes && requestTypes.length > 0 ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {requestTypes.map((item) => (
-                <Card key={item._id}>
-                  <CardHeader>
-                    <CardTitle>{item.title}</CardTitle>
-                    <CardDescription>{item.description}</CardDescription>
+                <Card key={item._id} className="h-full min-h-[220px]">
+                  <CardHeader className="gap-2">
+                    <CardTitle className="line-clamp-1">{item.title}</CardTitle>
+                    <CardDescription className="line-clamp-3 min-h-[60px]">
+                      {item.description}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm">
-                      ${item.price.toFixed(2)} · {item.responseWindowHours}h
-                      response window
+                    <p className="text-sm line-clamp-1">
+                      <span className="font-medium text-primary">${item.price.toFixed(2)}</span>
+                      <span className="text-zinc-400"> · </span>
+                      <span className="text-amber-600">{item.responseWindowHours}h response window</span>
                     </p>
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="mt-auto">
                     <p className="text-xs text-zinc-500">Text response only</p>
                   </CardFooter>
                 </Card>

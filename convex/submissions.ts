@@ -1,5 +1,49 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+import type { QueryCtx } from "./_generated/server";
+
+async function listCreatorSubmissionsForExperience(
+  ctx: QueryCtx,
+  experienceId: string,
+  creatorId: string,
+) {
+  const pending = await ctx.db
+    .query("submissions")
+    .withIndex("by_creator_status", (q) =>
+      q.eq("creatorId", creatorId).eq("status", "pending"),
+    )
+    .filter((q) => q.eq(q.field("experienceId"), experienceId))
+    .collect();
+
+  const answered = await ctx.db
+    .query("submissions")
+    .withIndex("by_creator_status", (q) =>
+      q.eq("creatorId", creatorId).eq("status", "answered"),
+    )
+    .filter((q) => q.eq(q.field("experienceId"), experienceId))
+    .collect();
+
+  const expired = await ctx.db
+    .query("submissions")
+    .withIndex("by_creator_status", (q) =>
+      q.eq("creatorId", creatorId).eq("status", "expired"),
+    )
+    .filter((q) => q.eq(q.field("experienceId"), experienceId))
+    .collect();
+
+  const refunded = await ctx.db
+    .query("submissions")
+    .withIndex("by_creator_status", (q) =>
+      q.eq("creatorId", creatorId).eq("status", "refunded"),
+    )
+    .filter((q) => q.eq(q.field("experienceId"), experienceId))
+    .collect();
+
+  return [...pending, ...answered, ...expired, ...refunded].sort(
+    (a, b) => b.createdAt - a.createdAt,
+  );
+}
 
 export const listPendingForCreator = query({
   args: {
@@ -94,6 +138,7 @@ export const createSubmission = mutation({
     experienceId: v.string(),
     requestTypeId: v.id("requestTypes"),
     viewerUserId: v.string(),
+    viewerUserName: v.string(),
   },
   handler: async (ctx, args) => {
     const requestType = await ctx.db.get(args.requestTypeId);
@@ -113,7 +158,11 @@ export const createSubmission = mutation({
       experienceId: args.experienceId,
       requestTypeId: args.requestTypeId,
       userId: args.viewerUserId,
+      userName: args.viewerUserName,
       creatorId: requestType.creatorId,
+      requestTypeTitleSnapshot: requestType.title,
+      amountUsd: requestType.price,
+      responseWindowHoursSnapshot: requestType.responseWindowHours,
       createdAt: Date.now(),
       status: "pending",
       paymentStatus: "held",
@@ -152,5 +201,92 @@ export const answerSubmission = mutation({
     });
 
     return await ctx.db.get(args.submissionId);
+  },
+});
+
+export const listForAdminDashboard = query({
+  args: {
+    experienceId: v.string(),
+    viewerUserId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const submissions = await listCreatorSubmissionsForExperience(
+      ctx,
+      args.experienceId,
+      args.viewerUserId,
+    );
+
+    const now = Date.now();
+
+    return await Promise.all(
+      submissions.map(async (submission) => {
+        const requestType = await ctx.db.get(
+          submission.requestTypeId as Id<"requestTypes">,
+        );
+        const requestTypeLabel = requestType
+          ? requestType.isDeleted === true || requestType.isActive === false
+            ? "Request type no longer active"
+            : requestType.title ?? submission.requestTypeTitleSnapshot
+          : "Request type no longer active";
+        const deadlineAt =
+          submission.createdAt + submission.responseWindowHoursSnapshot * 60 * 60 * 1000;
+
+        return {
+          ...submission,
+          requestTypeLabel,
+          deadlineAt,
+          isWithinResponseWindow: now <= deadlineAt,
+        };
+      }),
+    );
+  },
+});
+
+export const getAdminMetrics = query({
+  args: {
+    experienceId: v.string(),
+    viewerUserId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const submissions = await listCreatorSubmissionsForExperience(
+      ctx,
+      args.experienceId,
+      args.viewerUserId,
+    );
+
+    const now = Date.now();
+    const totalSubmissions = submissions.length;
+    const totalPending = submissions.filter((item) => item.status === "pending").length;
+    const totalAnswered = submissions.filter((item) => item.status === "answered").length;
+
+    const moneyEarned = submissions
+      .filter((item) => item.status === "answered")
+      .reduce((sum, item) => sum + item.amountUsd, 0);
+
+    const moneyAvailable = submissions
+      .filter((item) => {
+        if (item.status !== "pending") {
+          return false;
+        }
+
+        const deadlineAt =
+          item.createdAt + item.responseWindowHoursSnapshot * 60 * 60 * 1000;
+        return now <= deadlineAt;
+      })
+      .reduce((sum, item) => sum + item.amountUsd, 0);
+
+    const totalRevenueOpportunity = moneyEarned + moneyAvailable;
+    const earnedRate =
+      totalRevenueOpportunity > 0 ? (moneyEarned / totalRevenueOpportunity) * 100 : 0;
+
+    return {
+      totalSubmissions,
+      totalPending,
+      totalAnswered,
+      moneyEarned,
+      moneyAvailable,
+      totalRevenueOpportunity,
+      earnedRate,
+    };
   },
 });

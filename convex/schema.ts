@@ -23,6 +23,7 @@ export default defineSchema({
     price: v.number(),
     responseWindowHours: v.number(),
     isActive: v.boolean(),
+    isDeleted: v.optional(v.boolean()),
   })
     .index("by_experience_creator", ["experienceId", "creatorId"])
     .index("by_experience_active", ["experienceId", "isActive"])
@@ -31,7 +32,11 @@ export default defineSchema({
     experienceId: v.string(),
     requestTypeId: v.id("requestTypes"),
     userId: v.string(),
+    userName: v.string(),
     creatorId: v.string(),
+    requestTypeTitleSnapshot: v.string(),
+    amountUsd: v.number(),
+    responseWindowHoursSnapshot: v.number(),
     createdAt: v.number(),
     status: submissionStatus,
     paymentStatus,
