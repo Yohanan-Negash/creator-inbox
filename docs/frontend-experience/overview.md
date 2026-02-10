@@ -11,6 +11,14 @@ The frontend is organized around two route surfaces per experience: member and a
   - view personal submissions and creator responses
 - Uses localStorage to persist read/unread response state by experience/user key.
 
+## Marketing Surface
+
+- Route: `app/page.tsx`
+- Primary capabilities:
+  - communicate Creator Inbox value proposition and product flow
+  - present branded one-page sections with Three.js-powered visuals
+  - hold launch CTA state before public app entry goes live
+
 ## Admin Surface
 
 - Route: `app/experiences/[experienceId]/admin/page.tsx`
