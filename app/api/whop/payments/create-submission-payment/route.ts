@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { api } from "@/convex/_generated/api";
+import { getSafeErrorMessage } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { getWhopSdk } from "@/lib/whop";
 import { getConvexServerClient } from "@/lib/convex-server";
@@ -11,10 +12,6 @@ const createSubmissionPaymentSchema = z.object({
   submissionText: z.string().min(8).max(2000),
   whopDevUserToken: z.string().optional(),
 });
-
-function getSafeErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unknown error";
-}
 
 function clampWhopTitle(value: string) {
   return value.trim().slice(0, 40);

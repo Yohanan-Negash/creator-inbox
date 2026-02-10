@@ -4,30 +4,19 @@ import { use, useEffect, useMemo, useState } from "react";
 import type { SubmitEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { useQuery } from "convex/react";
 import { z } from "zod";
-import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemberHeader } from "@/components/experiences/member/member-header";
 import { RequestTypesView } from "@/components/experiences/member/request-types-view";
 import { SubmissionsView } from "@/components/experiences/member/submissions-view";
 import { SubmitRequestDialog } from "@/components/experiences/member/submit-request-dialog";
-
-type WhopResponse = {
-  user?: {
-    id: string;
-    username: string;
-    name: string | null;
-  };
-  access?: {
-    access_level: string;
-    has_access: boolean;
-  };
-  error?: string;
-};
-
-type HomeView = "request-types" | "submissions";
+import type { WhopResponse } from "@/lib/types/experiences/common";
+import type {
+  HomeView,
+  MemberRequestType,
+  MemberSubmission,
+} from "@/lib/types/experiences/member";
 
 const submissionSchema = z.object({
   submissionText: z
@@ -64,19 +53,11 @@ export default function ExperiencePage({
   const [submissionsPage, setSubmissionsPage] = useState(1);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<Id<"submissions"> | null>(null);
   const [readSubmissionIds, setReadSubmissionIds] = useState<string[]>([]);
-
-  const requestTypes = useQuery(api.requestTypes.listActiveByExperience, {
-    experienceId,
-  });
+  const [requestTypes, setRequestTypes] = useState<MemberRequestType[] | undefined>(undefined);
+  const [submissions, setSubmissions] = useState<MemberSubmission[] | undefined>(undefined);
+  const [memberDataLoading, setMemberDataLoading] = useState(false);
 
   const viewerUserId = data?.user?.id ?? "";
-  const submissions = useQuery(
-    api.submissions.listVisibleForUser,
-    data?.access?.has_access && viewerUserId
-      ? { experienceId, viewerUserId }
-      : "skip",
-  );
-
   const submissionsPageSize = 6;
   const totalSubmissionPages = useMemo(() => {
     const count = submissions?.length ?? 0;
@@ -196,6 +177,70 @@ export default function ExperiencePage({
     };
   }, [devUserToken, experienceId]);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadMemberData() {
+      if (!data?.access?.has_access || !viewerUserId) {
+        if (active) {
+          setRequestTypes(undefined);
+          setSubmissions(undefined);
+        }
+        return;
+      }
+
+      setMemberDataLoading(true);
+      try {
+        const url = new URL(
+          `/api/whop/experiences/${encodeURIComponent(experienceId)}/member-data`,
+          window.location.origin,
+        );
+        if (devUserToken) {
+          url.searchParams.set("whop-dev-user-token", devUserToken);
+        }
+
+        const response = await fetch(url.toString());
+        const payload = (await response.json()) as {
+          requestTypes?: MemberRequestType[];
+          submissions?: MemberSubmission[];
+          error?: string;
+        };
+
+        if (!active) {
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(payload.error || "Failed to load member data.");
+        }
+
+        setRequestTypes(payload.requestTypes ?? []);
+        setSubmissions(
+          (payload.submissions ?? []).map((item) => ({
+            ...item,
+            responseText: item.responseText ?? undefined,
+          })),
+        );
+      } catch {
+        if (!active) {
+          return;
+        }
+        setRequestTypes([]);
+        setSubmissions([]);
+      } finally {
+        if (active) {
+          setMemberDataLoading(false);
+        }
+      }
+    }
+
+    loadMemberData();
+
+    return () => {
+      active = false;
+    };
+  }, [data?.access?.has_access, devUserToken, experienceId, viewerUserId]);
+
   function openSubmitDialog(item: { _id: Id<"requestTypes">; title: string; price: number }) {
     setSelectedRequestType({ id: item._id, title: item.title, price: item.price });
     setSubmissionText("");
@@ -304,6 +349,34 @@ export default function ExperiencePage({
           resetCheckoutState();
           setSubmissionPending(false);
           setActiveView("submissions");
+          setMemberDataLoading(true);
+          try {
+            const url = new URL(
+              `/api/whop/experiences/${encodeURIComponent(experienceId)}/member-data`,
+              window.location.origin,
+            );
+            if (devUserToken) {
+              url.searchParams.set("whop-dev-user-token", devUserToken);
+            }
+            const refreshResponse = await fetch(url.toString());
+            const refreshPayload = (await refreshResponse.json()) as {
+              requestTypes?: MemberRequestType[];
+              submissions?: MemberSubmission[];
+            };
+            if (refreshResponse.ok) {
+              setRequestTypes(refreshPayload.requestTypes ?? []);
+              setSubmissions(
+                (refreshPayload.submissions ?? []).map((item) => ({
+                  ...item,
+                  responseText: item.responseText ?? undefined,
+                })),
+              );
+            }
+          } catch {
+            // no-op
+          } finally {
+            setMemberDataLoading(false);
+          }
           return;
         }
 
@@ -346,7 +419,7 @@ export default function ExperiencePage({
   }
 
   const hasAccess = data?.access?.has_access === true;
-  const isRequestTypesLoading = hasAccess && requestTypes === undefined;
+  const isRequestTypesLoading = hasAccess && (requestTypes === undefined || memberDataLoading);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 p-6">

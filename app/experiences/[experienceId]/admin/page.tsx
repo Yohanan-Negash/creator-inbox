@@ -1,57 +1,34 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import type { SubmitEvent } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { REQUEST_TYPE_DESCRIPTION_MAX_LENGTH } from "@/lib/request-types/constants";
+import type { WhopResponse } from "@/lib/types/experiences/common";
+import type {
+  AdminMetrics,
+  AdminRequestType,
+  AdminSubmission,
+  AdminView,
+  GenerateRequestTypesResponse,
+  RequestTypeFieldErrors,
+  RequestTypeFormValues,
+} from "@/lib/types/experiences/admin";
 import { RequestTypeFormDialog } from "@/components/experiences/admin/request-type-form-dialog";
 import { RequestTypesManagement } from "@/components/experiences/admin/request-types-management";
 import { MetricsSubmissionsSection } from "@/components/experiences/admin/metrics-submissions-section";
 import { AnswerSubmissionDialog } from "@/components/experiences/admin/answer-submission-dialog";
-
-type WhopResponse = {
-  user?: {
-    id: string;
-    username: string;
-    name: string | null;
-  };
-  access?: {
-    access_level: string;
-    has_access: boolean;
-  };
-  error?: string;
-};
-
-type RequestTypeFormValues = {
-  title: string;
-  description: string;
-  price: string;
-  responseWindowHours: string;
-};
-
-type RequestTypeFieldErrors = Partial<Record<keyof RequestTypeFormValues, string>>;
-
-type GenerateRequestTypesResponse = {
-  rejected: boolean;
-  rejectionReason: string;
-  requestTypes: Array<{
-    title: string;
-    description: string;
-    price: number;
-    responseWindowHours: number;
-  }>;
-  error?: string;
-};
-
-type AdminView = "request-types" | "metrics";
+import {
+  fetchAdminData,
+  postRequestTypeAction,
+  postSubmissionAction,
+} from "./_lib/api";
 
 const requestTypeFormSchema = z.object({
   title: z.string().trim().min(1, "Title is required."),
@@ -94,6 +71,7 @@ export default function AdminPage({
   params: Promise<{ experienceId: string }>;
 }) {
   const { experienceId } = use(params);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const devUserToken = searchParams.get("whop-dev-user-token") ?? "";
 
@@ -128,37 +106,27 @@ export default function AdminPage({
   const [submissionDeleteError, setSubmissionDeleteError] = useState<string | null>(null);
   const [cashoutPending, setCashoutPending] = useState(false);
   const [cashoutError, setCashoutError] = useState<string | null>(null);
+  const [requestTypes, setRequestTypes] = useState<AdminRequestType[] | undefined>(undefined);
+  const [dashboardSubmissions, setDashboardSubmissions] = useState<AdminSubmission[] | undefined>(
+    undefined,
+  );
+  const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
 
   const viewerUserId = data?.user?.id ?? "";
 
-  const requestTypes = useQuery(
-    api.requestTypes.listByExperienceCreator,
-    data?.access?.access_level === "admin" && viewerUserId
-      ? { experienceId, viewerUserId }
-      : "skip",
-  );
-
-  const dashboardSubmissions = useQuery(
-    api.submissions.listForAdminDashboard,
-    data?.access?.access_level === "admin" && viewerUserId
-      ? { experienceId, viewerUserId }
-      : "skip",
-  );
-
-  const metrics = useQuery(
-    api.submissions.getAdminMetrics,
-    data?.access?.access_level === "admin" && viewerUserId
-      ? { experienceId, viewerUserId }
-      : "skip",
-  );
-
-  const createRequestType = useMutation(api.requestTypes.createRequestType);
-  const updateRequestType = useMutation(api.requestTypes.updateRequestType);
-  const archiveRequestType = useMutation(api.requestTypes.archiveRequestType);
-  const unarchiveRequestType = useMutation(api.requestTypes.unarchiveRequestType);
-  const softDeleteRequestType = useMutation(api.requestTypes.softDeleteRequestType);
-  const answerSubmission = useMutation(api.submissions.answerSubmission);
-  const deleteSubmissionForCreator = useMutation(api.submissions.deleteSubmissionForCreator);
+  const refreshAdminData = useCallback(async () => {
+    try {
+      const payload = await fetchAdminData(window.location.origin, experienceId, devUserToken);
+      setRequestTypes(payload.requestTypes);
+      setDashboardSubmissions(payload.dashboardSubmissions);
+      setMetrics(payload.metrics);
+    } catch (error) {
+      setStatusError(getErrorMessage(error, "Failed to load admin data."));
+      setRequestTypes([]);
+      setDashboardSubmissions([]);
+      setMetrics(null);
+    }
+  }, [devUserToken, experienceId]);
 
   const pageSize = 4;
   const totalPages = useMemo(() => {
@@ -231,6 +199,29 @@ export default function AdminPage({
       active = false;
     };
   }, [devUserToken, experienceId]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadAdminData() {
+      if (data?.access?.access_level !== "admin" || !viewerUserId) {
+        if (active) {
+          setRequestTypes(undefined);
+          setDashboardSubmissions(undefined);
+          setMetrics(null);
+        }
+        return;
+      }
+
+      await refreshAdminData();
+    }
+
+    loadAdminData();
+
+    return () => {
+      active = false;
+    };
+  }, [data?.access?.access_level, refreshAdminData, viewerUserId]);
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages));
@@ -386,25 +377,29 @@ export default function AdminPage({
     setSubmitPending(true);
 
     try {
-      if (editingRequestTypeId) {
-        await updateRequestType({
-          requestTypeId: editingRequestTypeId,
-          viewerUserId,
-          title: parsed.data.title,
-          description: parsed.data.description,
-          price: parsed.data.price,
-          responseWindowHours: parsed.data.responseWindowHours,
-        });
-      } else {
-        await createRequestType({
-          experienceId,
-          viewerUserId,
-          title: parsed.data.title,
-          description: parsed.data.description,
-          price: parsed.data.price,
-          responseWindowHours: parsed.data.responseWindowHours,
-        });
-      }
+      await postRequestTypeAction(
+        experienceId,
+        editingRequestTypeId
+          ? {
+              action: "update",
+              requestTypeId: editingRequestTypeId,
+              title: parsed.data.title,
+              description: parsed.data.description,
+              price: parsed.data.price,
+              responseWindowHours: parsed.data.responseWindowHours,
+              whopDevUserToken: devUserToken || undefined,
+            }
+          : {
+              action: "create",
+              title: parsed.data.title,
+              description: parsed.data.description,
+              price: parsed.data.price,
+              responseWindowHours: parsed.data.responseWindowHours,
+              whopDevUserToken: devUserToken || undefined,
+            },
+      );
+
+      await refreshAdminData();
 
       setDialogOpen(false);
       resetFormState();
@@ -435,17 +430,13 @@ export default function AdminPage({
     setStatusPendingId(requestTypeId);
 
     try {
-      if (nextIsActive) {
-        await unarchiveRequestType({
-          requestTypeId,
-          viewerUserId,
-        });
-      } else {
-        await archiveRequestType({
-          requestTypeId,
-          viewerUserId,
-        });
-      }
+      await postRequestTypeAction(experienceId, {
+        action: nextIsActive ? "unarchive" : "archive",
+        requestTypeId,
+        whopDevUserToken: devUserToken || undefined,
+      });
+
+      await refreshAdminData();
     } catch (error) {
       setStatusError(getErrorMessage(error, "Failed to update request type status."));
     } finally {
@@ -463,7 +454,13 @@ export default function AdminPage({
     setDeletePendingId(requestTypeId);
 
     try {
-      await softDeleteRequestType({ requestTypeId, viewerUserId });
+      await postRequestTypeAction(experienceId, {
+        action: "delete",
+        requestTypeId,
+        whopDevUserToken: devUserToken || undefined,
+      });
+
+      await refreshAdminData();
       return true;
     } catch (error) {
       setDeleteError(getErrorMessage(error, "Failed to delete request type."));
@@ -522,10 +519,13 @@ export default function AdminPage({
     setSubmissionDeletePendingId(submissionId);
 
     try {
-      await deleteSubmissionForCreator({
+      await postSubmissionAction(experienceId, {
+        action: "delete",
         submissionId,
-        viewerUserId,
+        whopDevUserToken: devUserToken || undefined,
       });
+
+      await refreshAdminData();
     } catch (error) {
       setSubmissionDeleteError(getErrorMessage(error, "Failed to delete submission."));
     } finally {
@@ -596,11 +596,14 @@ export default function AdminPage({
     setAnswerPending(true);
 
     try {
-      await answerSubmission({
+      await postSubmissionAction(experienceId, {
+        action: "answer",
         submissionId: answerDialogSubmissionId,
-        viewerUserId,
         responseText: answerText.trim(),
+        whopDevUserToken: devUserToken || undefined,
       });
+
+      await refreshAdminData();
       setAnswerDialogSubmissionId(null);
       setAnswerText("");
     } catch (error) {
@@ -611,6 +614,16 @@ export default function AdminPage({
   }
 
   const homeHref = `/experiences/${encodeURIComponent(experienceId)}${devUserToken ? `?whop-dev-user-token=${encodeURIComponent(devUserToken)}` : ""}`;
+  const shouldRedirectToExperience =
+    !loading && !data?.error && data?.access?.access_level !== "admin";
+
+  useEffect(() => {
+    if (!shouldRedirectToExperience) {
+      return;
+    }
+
+    router.replace(homeHref);
+  }, [homeHref, router, shouldRedirectToExperience]);
 
   if (loading) {
     return (
@@ -623,15 +636,13 @@ export default function AdminPage({
     );
   }
 
-  if (data?.error || data?.access?.access_level !== "admin") {
+  if (data?.error) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-4 p-6">
         <Card>
           <CardHeader>
-            <CardTitle>Unauthorized</CardTitle>
-            <CardDescription>
-              Only experience admins can view this page.
-            </CardDescription>
+            <CardTitle>Access error</CardTitle>
+            <CardDescription>{data.error}</CardDescription>
           </CardHeader>
         </Card>
         <div>
@@ -643,6 +654,17 @@ export default function AdminPage({
           >
             Back to Experience
           </Button>
+        </div>
+      </main>
+    );
+  }
+
+  if (shouldRedirectToExperience) {
+    return (
+      <main className="flex min-h-screen items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="size-8 animate-spin text-primary" />
+          <p className="text-sm text-zinc-500">Redirecting to experience...</p>
         </div>
       </main>
     );
