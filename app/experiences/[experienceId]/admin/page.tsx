@@ -63,7 +63,10 @@ const requestTypeFormSchema = z.object({
       REQUEST_TYPE_DESCRIPTION_MAX_LENGTH,
       `Description must be at most ${REQUEST_TYPE_DESCRIPTION_MAX_LENGTH} characters.`,
     ),
-  price: z.coerce.number().positive("Price must be greater than 0."),
+  price: z.coerce
+    .number()
+    .int("Price must be a whole number.")
+    .positive("Price must be greater than 0."),
   responseWindowHours: z.coerce
     .number()
     .int("Response window must be a whole number.")
@@ -114,6 +117,17 @@ export default function AdminPage({
   const [currentPage, setCurrentPage] = useState(1);
   const [submissionsPage, setSubmissionsPage] = useState(1);
   const [answerDialogSubmissionId, setAnswerDialogSubmissionId] = useState<Id<"submissions"> | null>(null);
+  const [answerText, setAnswerText] = useState("");
+  const [answerPending, setAnswerPending] = useState(false);
+  const [answerError, setAnswerError] = useState<string | null>(null);
+  const [refundPendingId, setRefundPendingId] = useState<Id<"submissions"> | null>(null);
+  const [refundError, setRefundError] = useState<string | null>(null);
+  const [submissionDeletePendingId, setSubmissionDeletePendingId] = useState<
+    Id<"submissions"> | null
+  >(null);
+  const [submissionDeleteError, setSubmissionDeleteError] = useState<string | null>(null);
+  const [cashoutPending, setCashoutPending] = useState(false);
+  const [cashoutError, setCashoutError] = useState<string | null>(null);
 
   const viewerUserId = data?.user?.id ?? "";
 
@@ -143,6 +157,8 @@ export default function AdminPage({
   const archiveRequestType = useMutation(api.requestTypes.archiveRequestType);
   const unarchiveRequestType = useMutation(api.requestTypes.unarchiveRequestType);
   const softDeleteRequestType = useMutation(api.requestTypes.softDeleteRequestType);
+  const answerSubmission = useMutation(api.submissions.answerSubmission);
+  const deleteSubmissionForCreator = useMutation(api.submissions.deleteSubmissionForCreator);
 
   const pageSize = 4;
   const totalPages = useMemo(() => {
@@ -468,17 +484,130 @@ export default function AdminPage({
     }
   }
 
+  async function handleRefundSubmission(submissionId: Id<"submissions">) {
+    setRefundError(null);
+    setRefundPendingId(submissionId);
+
+    try {
+      const response = await fetch("/api/whop/payments/refund-submission", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          experienceId,
+          submissionId,
+          whopDevUserToken: devUserToken || undefined,
+        }),
+      });
+
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error || "Failed to refund submission.");
+      }
+    } catch (error) {
+      setRefundError(getErrorMessage(error, "Failed to refund submission."));
+    } finally {
+      setRefundPendingId(null);
+    }
+  }
+
+  async function handleDeleteSubmission(submissionId: Id<"submissions">) {
+    if (!viewerUserId) {
+      setSubmissionDeleteError("Unable to verify your user account. Please refresh and try again.");
+      return;
+    }
+
+    setSubmissionDeleteError(null);
+    setSubmissionDeletePendingId(submissionId);
+
+    try {
+      await deleteSubmissionForCreator({
+        submissionId,
+        viewerUserId,
+      });
+    } catch (error) {
+      setSubmissionDeleteError(getErrorMessage(error, "Failed to delete submission."));
+    } finally {
+      setSubmissionDeletePendingId(null);
+    }
+  }
+
+  async function handleCashout() {
+    setCashoutError(null);
+    setCashoutPending(true);
+
+    try {
+      const response = await fetch("/api/whop/payments/cashout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          experienceId,
+          whopDevUserToken: devUserToken || undefined,
+        }),
+      });
+
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error || "Failed to cash out.");
+      }
+    } catch (error) {
+      setCashoutError(getErrorMessage(error, "Failed to cash out."));
+    } finally {
+      setCashoutPending(false);
+    }
+  }
+
   function openAnswerDialog(submissionId: Id<"submissions">) {
     const submission = dashboardSubmissions?.find((item) => item._id === submissionId);
     if (!submission) {
       return;
     }
 
-    if (submission.status !== "answered") {
+    if (submission.status !== "answered" && submission.status !== "pending") {
       return;
     }
 
+    if (submission.status === "pending" && !submission.isWithinResponseWindow) {
+      return;
+    }
+
+    setAnswerError(null);
+    setAnswerText(submission.responseText ?? "");
     setAnswerDialogSubmissionId(submissionId);
+  }
+
+  async function handleSubmitAnswer(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!viewerUserId || !answerDialogSubmissionId) {
+      setAnswerError("Unable to verify your user account. Please refresh and try again.");
+      return;
+    }
+
+    if (answerText.trim().length < 8) {
+      setAnswerError("Response must be at least 8 characters.");
+      return;
+    }
+
+    setAnswerError(null);
+    setAnswerPending(true);
+
+    try {
+      await answerSubmission({
+        submissionId: answerDialogSubmissionId,
+        viewerUserId,
+        responseText: answerText.trim(),
+      });
+      setAnswerDialogSubmissionId(null);
+      setAnswerText("");
+    } catch (error) {
+      setAnswerError(getErrorMessage(error, "Failed to answer submission."));
+    } finally {
+      setAnswerPending(false);
+    }
   }
 
   const homeHref = `/experiences/${encodeURIComponent(experienceId)}${devUserToken ? `?whop-dev-user-token=${encodeURIComponent(devUserToken)}` : ""}`;
@@ -530,7 +659,11 @@ export default function AdminPage({
           <Button
             size="sm"
             variant="outline"
-            className={activeView === "metrics" ? "border-primary text-primary" : ""}
+            className={
+              activeView === "metrics"
+                ? "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800"
+                : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+            }
             onClick={() =>
               setActiveView((view) =>
                 view === "metrics" ? "request-types" : "metrics",
@@ -603,19 +736,40 @@ export default function AdminPage({
             submissionsPage={submissionsPage}
             totalSubmissionPages={totalSubmissionPages}
             onOpenAnswerDialog={openAnswerDialog}
+            onRefundSubmission={handleRefundSubmission}
+            onDeleteSubmission={handleDeleteSubmission}
+            onCashout={handleCashout}
+            cashoutPending={cashoutPending}
+            refundPendingId={refundPendingId}
+            deletePendingId={submissionDeletePendingId}
             onSetSubmissionsPage={setSubmissionsPage}
           />
+
+          {refundError ? <p className="text-xs text-red-600">{refundError}</p> : null}
+          {submissionDeleteError ? (
+            <p className="text-xs text-red-600">{submissionDeleteError}</p>
+          ) : null}
+          {cashoutError ? <p className="text-xs text-red-600">{cashoutError}</p> : null}
 
           <AnswerSubmissionDialog
             open={Boolean(answerDialogSubmissionId)}
             selectedSubmission={selectedSubmission}
+            answerText={answerText}
+            answerPending={answerPending}
+            answerError={answerError}
             onOpenChange={(open) => {
               if (!open) {
                 setAnswerDialogSubmissionId(null);
+                setAnswerError(null);
+                setAnswerText("");
               }
             }}
+            onAnswerTextChange={setAnswerText}
+            onSubmitAnswer={handleSubmitAnswer}
             onClose={() => {
               setAnswerDialogSubmissionId(null);
+              setAnswerError(null);
+              setAnswerText("");
             }}
           />
         </section>

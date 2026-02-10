@@ -4,7 +4,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import type { SubmitEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { z } from "zod";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -37,14 +37,6 @@ const submissionSchema = z.object({
     .max(2000, "Submission must be at most 2000 characters."),
 });
 
-function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return fallback;
-}
-
 export default function ExperiencePage({
   params,
 }: {
@@ -66,6 +58,9 @@ export default function ExperiencePage({
   const [submissionText, setSubmissionText] = useState("");
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [submissionPending, setSubmissionPending] = useState(false);
+  const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
+  const [checkoutPaymentId, setCheckoutPaymentId] = useState<string | null>(null);
+  const [checkoutReturnUrl, setCheckoutReturnUrl] = useState<string | null>(null);
   const [submissionsPage, setSubmissionsPage] = useState(1);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<Id<"submissions"> | null>(null);
   const [readSubmissionIds, setReadSubmissionIds] = useState<string[]>([]);
@@ -81,7 +76,6 @@ export default function ExperiencePage({
       ? { experienceId, viewerUserId }
       : "skip",
   );
-  const createSubmission = useMutation(api.submissions.createSubmission);
 
   const submissionsPageSize = 6;
   const totalSubmissionPages = useMemo(() => {
@@ -224,30 +218,118 @@ export default function ExperiencePage({
       return;
     }
 
-    const viewerUserName =
-      data?.user?.username?.trim() || data?.user?.name?.trim() || viewerUserId;
-
     setSubmissionPending(true);
     setSubmissionError(null);
 
     try {
-      await createSubmission({
-        experienceId,
-        requestTypeId: selectedRequestType.id,
-        viewerUserId,
-        viewerUserName,
-        submissionText: parsed.data.submissionText,
+      const createResponse = await fetch("/api/whop/payments/create-submission-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          experienceId,
+          requestTypeId: selectedRequestType.id,
+          submissionText: parsed.data.submissionText,
+          whopDevUserToken: devUserToken || undefined,
+        }),
       });
 
-      setSubmitDialogOpen(false);
-      setSelectedRequestType(null);
-      setSubmissionText("");
-      setActiveView("submissions");
-    } catch (error) {
-      setSubmissionError(getErrorMessage(error, "Failed to submit request."));
-    } finally {
+      const createPayload = (await createResponse.json()) as {
+        checkoutConfigurationId?: string;
+        planId?: string;
+        paymentId?: string;
+        purchaseUrl?: string;
+        redirectUrl?: string;
+        status?: string;
+        submissionCreated?: boolean;
+        error?: string;
+      };
+
+      if (!createResponse.ok) {
+        throw new Error(createPayload.error || "Failed to process payment.");
+      }
+
+      if (!createPayload.checkoutConfigurationId) {
+        throw new Error("Missing checkout details.");
+      }
+
+      setCheckoutSessionId(createPayload.checkoutConfigurationId);
+      setCheckoutPaymentId(createPayload.paymentId ?? null);
+      setCheckoutReturnUrl(createPayload.redirectUrl ?? null);
+      setSubmissionPending(false);
+      return;
+    } catch {
+      setSubmissionError("Please try again.");
       setSubmissionPending(false);
     }
+  }
+
+  function resetCheckoutState() {
+    setCheckoutSessionId(null);
+    setCheckoutPaymentId(null);
+    setCheckoutReturnUrl(null);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async function handleCheckoutComplete(_planId: string, _receiptId?: string) {
+    if (!checkoutPaymentId) {
+      setSubmitDialogOpen(false);
+      resetCheckoutState();
+      setActiveView("submissions");
+      return;
+    }
+
+    setSubmissionPending(true);
+    setSubmissionError(null);
+
+    const maxAttempts = 10;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const statusUrl = new URL("/api/whop/payments/submission-status", window.location.origin);
+        statusUrl.searchParams.set("experienceId", experienceId);
+        statusUrl.searchParams.set("paymentId", checkoutPaymentId);
+        if (devUserToken) {
+          statusUrl.searchParams.set("whop-dev-user-token", devUserToken);
+        }
+
+        const response = await fetch(statusUrl.toString());
+        const statusPayload = (await response.json()) as {
+          status?: string;
+          submissionCreated?: boolean;
+        };
+
+        if (statusPayload.status === "paid" && statusPayload.submissionCreated) {
+          setSubmitDialogOpen(false);
+          resetCheckoutState();
+          setSubmissionPending(false);
+          setActiveView("submissions");
+          return;
+        }
+
+        if (statusPayload.status === "failed") {
+          setSubmissionError("Payment failed. Please try again.");
+          resetCheckoutState();
+          setSubmissionPending(false);
+          return;
+        }
+      } catch {
+        // continue polling
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+
+    // Timed out but payment may still be processing
+    setSubmitDialogOpen(false);
+    resetCheckoutState();
+    setSubmissionPending(false);
+    setActiveView("submissions");
+  }
+
+  function handleCheckoutCancel() {
+    resetCheckoutState();
+    setSubmissionError(null);
   }
 
   function openSubmissionDetails(submissionId: Id<"submissions">) {
@@ -349,6 +431,7 @@ export default function ExperiencePage({
             setSelectedRequestType(null);
             setSubmissionText("");
             setSubmissionError(null);
+            resetCheckoutState();
           }
         }}
         submissionPending={submissionPending}
@@ -363,6 +446,10 @@ export default function ExperiencePage({
           }
           setSubmitDialogOpen(false);
         }}
+        checkoutSessionId={checkoutSessionId}
+        checkoutReturnUrl={checkoutReturnUrl}
+        onCheckoutComplete={handleCheckoutComplete}
+        onCheckoutCancel={handleCheckoutCancel}
       />
     </main>
   );

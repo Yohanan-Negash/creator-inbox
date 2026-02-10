@@ -1,5 +1,5 @@
 import type { Id } from "@/convex/_generated/dataModel";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { formatDateTime, getStatusPillClass } from "@/components/experiences/shared/formatters";
 
 type Metrics = {
@@ -30,6 +31,7 @@ type Metrics = {
   totalPending: number;
   totalAnswered: number;
   moneyEarned: number;
+  balanceAvailable?: number;
   moneyAvailable: number;
 } | null;
 
@@ -52,6 +54,12 @@ type MetricsSubmissionsSectionProps = {
   submissionsPage: number;
   totalSubmissionPages: number;
   onOpenAnswerDialog: (submissionId: Id<"submissions">) => void;
+  onRefundSubmission: (submissionId: Id<"submissions">) => void;
+  onDeleteSubmission: (submissionId: Id<"submissions">) => void;
+  onCashout: () => void;
+  cashoutPending: boolean;
+  refundPendingId: Id<"submissions"> | null;
+  deletePendingId: Id<"submissions"> | null;
   onSetSubmissionsPage: (page: number) => void;
 };
 
@@ -63,8 +71,16 @@ export function MetricsSubmissionsSection({
   submissionsPage,
   totalSubmissionPages,
   onOpenAnswerDialog,
+  onRefundSubmission,
+  onDeleteSubmission,
+  onCashout,
+  cashoutPending,
+  refundPendingId,
+  deletePendingId,
   onSetSubmissionsPage,
 }: MetricsSubmissionsSectionProps) {
+  const balanceAvailable = metrics?.balanceAvailable ?? metrics?.moneyEarned ?? 0;
+
   return (
     <section className="grid gap-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -88,8 +104,17 @@ export function MetricsSubmissionsSection({
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Money Earned</CardDescription>
-            <CardTitle className="text-primary">${(metrics?.moneyEarned ?? 0).toFixed(2)}</CardTitle>
+            <CardDescription>Balance Available</CardDescription>
+            <CardTitle className="text-primary">${balanceAvailable.toFixed(2)}</CardTitle>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={cashoutPending || balanceAvailable <= 0}
+              onClick={onCashout}
+            >
+              {cashoutPending ? "Cashing out..." : "Cash out"}
+            </Button>
           </CardHeader>
         </Card>
         <Card>
@@ -105,7 +130,9 @@ export function MetricsSubmissionsSection({
       <Card>
         <CardHeader>
           <CardTitle>Submissions</CardTitle>
-          <CardDescription>Click an answered submission row to view the response.</CardDescription>
+          <CardDescription>
+            Click a pending row to answer it, or an answered row to view its response.
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           {dashboardSubmissions === undefined ? (
@@ -129,11 +156,14 @@ export function MetricsSubmissionsSection({
                   <TableHead>Created</TableHead>
                   <TableHead>Deadline</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pagedSubmissions.map((submission) => {
-                  const canOpenResponse = submission.status === "answered";
+                  const canOpenResponse =
+                    submission.status === "answered" ||
+                    (submission.status === "pending" && submission.isWithinResponseWindow);
                   return (
                     <TableRow
                       key={String(submission._id)}
@@ -157,12 +187,48 @@ export function MetricsSubmissionsSection({
                       <TableCell>{formatDateTime(submission.createdAt)}</TableCell>
                       <TableCell>
                         {submission.status === "pending" && !submission.isWithinResponseWindow ? (
-                          <span className="text-red-600">Expired window</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-red-600">Expired window</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+                              disabled={refundPendingId === submission._id}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onRefundSubmission(submission._id);
+                              }}
+                            >
+                              {refundPendingId === submission._id ? "Refunding..." : "Refund"}
+                            </Button>
+                          </div>
                         ) : (
                           formatDateTime(submission.deadlineAt)
                         )}
                       </TableCell>
                       <TableCell className="text-right">${submission.amountUsd.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={deletePendingId === submission._id}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onDeleteSubmission(submission._id);
+                          }}
+                        >
+                          {deletePendingId === submission._id ? (
+                            "Deleting..."
+                          ) : (
+                            <>
+                              <Trash2 className="size-3.5" />
+                              Delete
+                            </>
+                          )}
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   );
                 })}

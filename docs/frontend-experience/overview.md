@@ -7,7 +7,7 @@ The frontend is organized around two route surfaces per experience: member and a
 - Route: `app/experiences/[experienceId]/page.tsx`
 - Primary capabilities:
   - view active request types
-  - submit paid request text
+  - submit paid request text (submission is created only after Whop payment confirmation)
   - view personal submissions and creator responses
 - Uses localStorage to persist read/unread response state by experience/user key.
 
@@ -18,6 +18,7 @@ The frontend is organized around two route surfaces per experience: member and a
   - create/edit/archive/delete request types
   - view submission table and metrics cards
   - view answered submission responses
+  - refund expired pending submissions from the submissions table
 
 ## Componentization Pattern
 
