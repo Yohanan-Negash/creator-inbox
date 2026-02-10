@@ -11,8 +11,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { REQUEST_TYPE_DESCRIPTION_MAX_LENGTH } from "@/lib/request-types/constants";
+
+const responseWindowOptions = [1, 2, 4, 6, 12, 24, 48, 72, 168];
 
 type RequestTypeFormValues = {
   title: string;
@@ -58,7 +67,15 @@ export function RequestTypeFormDialog({
 }: RequestTypeFormDialogProps) {
   return (
     <Dialog open={dialogOpen} onOpenChange={onOpenChange}>
-      <DialogTrigger render={<Button size="sm" />} onClick={onOpenCreateDialog}>
+      <DialogTrigger
+        render={
+          <Button
+            size="sm"
+            className="bg-indigo-600 text-white hover:bg-indigo-700 hover:text-white"
+          />
+        }
+        onClick={onOpenCreateDialog}
+      >
         Create request type
       </DialogTrigger>
       <DialogContent showCloseButton={false} className="sm:max-w-lg">
@@ -132,7 +149,7 @@ export function RequestTypeFormDialog({
                 id="request-type-price"
                 type="number"
                 min="1"
-                step="0.01"
+                step="1"
                 value={formValues.price}
                 onChange={(event) =>
                   onFormChange({
@@ -151,22 +168,30 @@ export function RequestTypeFormDialog({
               <label className="text-xs font-medium" htmlFor="request-type-window">
                 Response window (hours)
               </label>
-              <Input
-                id="request-type-window"
-                type="number"
-                min="1"
-                step="1"
+              <Select
                 value={formValues.responseWindowHours}
-                onChange={(event) =>
+                onValueChange={(value) =>
                   onFormChange({
                     ...formValues,
-                    responseWindowHours: event.target.value,
+                    responseWindowHours: value ?? "",
                   })
                 }
-                aria-invalid={Boolean(fieldErrors.responseWindowHours)}
-                placeholder="12"
                 disabled={submitPending || generatePending}
-              />
+              >
+                <SelectTrigger
+                  id="request-type-window"
+                  aria-invalid={Boolean(fieldErrors.responseWindowHours)}
+                >
+                  <SelectValue placeholder="Select response window" />
+                </SelectTrigger>
+                <SelectContent>
+                  {responseWindowOptions.map((hours) => (
+                    <SelectItem key={hours} value={String(hours)}>
+                      {hours} hours
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {fieldErrors.responseWindowHours ? (
                 <p className="text-xs text-red-600">{fieldErrors.responseWindowHours}</p>
               ) : null}
@@ -214,7 +239,7 @@ export function RequestTypeFormDialog({
             <Button
               type="button"
               variant="outline"
-              className="border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-800"
+              className="border-red-300 bg-white text-red-600 hover:bg-red-50 hover:text-red-700"
               onClick={onCloseDialog}
               disabled={submitPending}
             >

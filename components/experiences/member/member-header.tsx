@@ -26,7 +26,11 @@ export function MemberHeader({
         <Button
           variant="outline"
           size="sm"
-          className={activeView === "submissions" ? "border-primary text-primary" : ""}
+          className={
+            activeView === "submissions"
+              ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+              : ""
+          }
           onClick={onToggleView}
         >
           {activeView === "submissions" ? "Request Types" : "My Submissions"}
@@ -41,6 +45,7 @@ export function MemberHeader({
             }
             variant="outline"
             size="sm"
+            className="border-indigo-300 text-indigo-700 hover:bg-indigo-50 hover:text-indigo-800"
           >
             Admin Page
           </Button>

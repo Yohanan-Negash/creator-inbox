@@ -3,9 +3,9 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 
-const MIN_SUBMISSION_TEXT_LENGTH = 8;
+export const MIN_SUBMISSION_TEXT_LENGTH = 8;
 
-function ensureValidSubmissionText(submissionText: string) {
+export function ensureValidSubmissionText(submissionText: string) {
   if (submissionText.trim().length < MIN_SUBMISSION_TEXT_LENGTH) {
     throw new Error(
       `Submission text must be at least ${MIN_SUBMISSION_TEXT_LENGTH} characters.`,
@@ -33,7 +33,7 @@ function clampMetricValue(value: number) {
   return Math.max(0, value);
 }
 
-async function applyCreatorMetricsDelta(
+export async function applyCreatorMetricsDelta(
   ctx: MutationCtx,
   args: {
     creatorId: string;
@@ -352,6 +352,63 @@ export const answerSubmission = mutation({
   },
 });
 
+export const deleteSubmissionForCreator = mutation({
+  args: {
+    submissionId: v.id("submissions"),
+    viewerUserId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.submissionId);
+    if (!existing) {
+      throw new Error("Submission not found.");
+    }
+
+    if (existing.creatorId !== args.viewerUserId) {
+      throw new Error("Unauthorized");
+    }
+
+    const metricDelta: CreatorMetricsDelta = {
+      totalSubmissions: -1,
+    };
+
+    if (existing.status === "pending") {
+      metricDelta.totalPending = -1;
+      metricDelta.moneyAvailable = -existing.amountUsd;
+    }
+
+    if (existing.status === "answered") {
+      metricDelta.totalAnswered = -1;
+      metricDelta.moneyEarned = -existing.amountUsd;
+    }
+
+    await applyCreatorMetricsDelta(ctx, {
+      creatorId: existing.creatorId,
+      experienceId: existing.experienceId,
+      delta: metricDelta,
+    });
+
+    const paymentRows = await ctx.db
+      .query("submissionPayments")
+      .withIndex("by_submission_id", (q) => q.eq("submissionId", args.submissionId))
+      .collect();
+
+    const now = Date.now();
+    for (const paymentRow of paymentRows) {
+      await ctx.db.patch(paymentRow._id, {
+        submissionId: undefined,
+        updatedAt: now,
+      });
+    }
+
+    await ctx.db.delete(args.submissionId);
+
+    return {
+      success: true,
+      submissionId: args.submissionId,
+    };
+  },
+});
+
 export const listForAdminDashboard = query({
   args: {
     experienceId: v.string(),
@@ -435,6 +492,7 @@ export const getAdminMetrics = query({
       totalPending,
       totalAnswered,
       moneyEarned,
+      balanceAvailable: moneyEarned,
       moneyAvailable,
       totalRevenueOpportunity,
       earnedRate,

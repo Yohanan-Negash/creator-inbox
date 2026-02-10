@@ -10,6 +10,16 @@ function ensureValidDescription(description: string) {
   }
 }
 
+function ensureValidPricingInputs(price: number, responseWindowHours: number) {
+  if (!Number.isInteger(price) || price <= 0) {
+    throw new Error("Price must be a positive whole number.");
+  }
+
+  if (!Number.isInteger(responseWindowHours) || responseWindowHours <= 0) {
+    throw new Error("Response window must be a positive whole number.");
+  }
+}
+
 export const listActiveByExperience = query({
   args: {
     experienceId: v.string(),
@@ -54,6 +64,7 @@ export const createRequestType = mutation({
   },
   handler: async (ctx, args) => {
     ensureValidDescription(args.description);
+    ensureValidPricingInputs(args.price, args.responseWindowHours);
 
     const requestTypeId = await ctx.db.insert("requestTypes", {
       experienceId: args.experienceId,
@@ -148,6 +159,7 @@ export const updateRequestType = mutation({
     }
 
     ensureValidDescription(args.description);
+    ensureValidPricingInputs(args.price, args.responseWindowHours);
 
     await ctx.db.patch(args.requestTypeId, {
       title: args.title,

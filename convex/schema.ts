@@ -14,6 +14,15 @@ const paymentStatus = v.union(
   v.literal("refunded"),
 );
 
+const submissionPaymentStatus = v.union(
+  v.literal("pending"),
+  v.literal("paid"),
+  v.literal("failed"),
+  v.literal("refunded"),
+);
+
+const cashoutStatus = v.union(v.literal("pending"), v.literal("completed"));
+
 export default defineSchema({
   requestTypes: defineTable({
     experienceId: v.string(),
@@ -49,6 +58,28 @@ export default defineSchema({
     .index("by_experience_user", ["experienceId", "userId"])
     .index("by_user", ["userId"])
     .index("by_request_type", ["requestTypeId"]),
+  submissionPayments: defineTable({
+    paymentId: v.string(),
+    whopCheckoutConfigurationId: v.optional(v.string()),
+    checkoutConfigurationId: v.optional(v.string()),
+    experienceId: v.string(),
+    requestTypeId: v.id("requestTypes"),
+    viewerUserId: v.string(),
+    viewerUserName: v.string(),
+    submissionText: v.string(),
+    amountUsd: v.number(),
+    status: submissionPaymentStatus,
+    submissionId: v.optional(v.id("submissions")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    refundedAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+  })
+    .index("by_payment_id", ["paymentId"])
+    .index("by_whop_checkout_configuration_id", ["whopCheckoutConfigurationId"])
+    .index("by_checkout_configuration_id", ["checkoutConfigurationId"])
+    .index("by_submission_id", ["submissionId"])
+    .index("by_experience_user", ["experienceId", "viewerUserId"]),
   creatorMetrics: defineTable({
     creatorId: v.string(),
     experienceId: v.string(),
@@ -59,4 +90,22 @@ export default defineSchema({
     moneyAvailable: v.number(),
     updatedAt: v.number(),
   }).index("by_creator_experience", ["creatorId", "experienceId"]),
+  cashouts: defineTable({
+    experienceId: v.string(),
+    creatorUserId: v.string(),
+    destinationCompanyId: v.string(),
+    originCompanyId: v.string(),
+    grossAmountUsd: v.number(),
+    creatorAmountUsd: v.number(),
+    platformFeeUsd: v.number(),
+    currency: v.string(),
+    idempotenceKey: v.string(),
+    transferId: v.optional(v.string()),
+    status: cashoutStatus,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_idempotence_key", ["idempotenceKey"])
+    .index("by_experience_creator_status", ["experienceId", "creatorUserId", "status"]),
 });
