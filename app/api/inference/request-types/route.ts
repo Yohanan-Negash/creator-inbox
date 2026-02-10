@@ -5,6 +5,7 @@ import {
   GenerateRequestTypesInputSchema,
   GenerateRequestTypesRouteInputSchema,
 } from "@/lib/inference/schemas";
+import { getSafeErrorMessage } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { getWhopSdk } from "@/lib/whop";
 
@@ -14,10 +15,6 @@ function toFieldErrors(
   error: z.ZodError<z.infer<typeof GenerateRequestTypesRouteInputSchema>>,
 ) {
   return z.flattenError(error).fieldErrors;
-}
-
-function getSafeErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unknown error";
 }
 
 export async function POST(request: Request) {

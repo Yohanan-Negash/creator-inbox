@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@/convex/_generated/api";
+import { getSafeErrorMessage } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { getWhopSdk } from "@/lib/whop";
 import { getConvexServerClient } from "@/lib/convex-server";
@@ -9,10 +10,6 @@ import {
   getWhopCheckoutConfigurationIdFromPayment,
   getWhopPaymentId,
 } from "@/lib/whop-payments";
-
-function getSafeErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unknown error";
-}
 
 function getPlatformCompanyId() {
   const companyId = process.env.WHOP_COMPANY_ID?.trim() ?? "";

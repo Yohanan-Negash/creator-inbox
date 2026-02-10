@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSafeErrorMessage } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { getWhopSdk } from "@/lib/whop";
-
-function getSafeErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unknown error";
-}
 
 export async function GET(request: NextRequest) {
   const experienceId = request.nextUrl.searchParams.get("experienceId");

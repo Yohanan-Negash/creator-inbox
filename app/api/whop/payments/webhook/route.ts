@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@/convex/_generated/api";
+import { getSafeErrorMessage } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { getConvexServerClient } from "@/lib/convex-server";
 import {
@@ -10,10 +11,6 @@ import {
 } from "@/lib/whop-payments";
 import { getWhopSdk } from "@/lib/whop";
 
-function getSafeErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unknown error";
-}
-
 function getWebhookKey() {
   return (process.env.WHOP_WEBHOOK_SECRET ?? "").trim();
 }
@@ -23,7 +20,7 @@ async function unwrapWebhookPayload(request: NextRequest, whopSdk: unknown) {
   const key = getWebhookKey();
 
   if (!key) {
-    return JSON.parse(body);
+    throw new Error("Missing WHOP_WEBHOOK_SECRET");
   }
 
   const sdk = whopSdk as {
