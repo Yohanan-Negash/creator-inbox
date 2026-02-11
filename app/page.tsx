@@ -1,5 +1,5 @@
 import { Space_Grotesk } from "next/font/google";
-import { ArrowRight, Coins, ShieldCheck, TimerReset } from "lucide-react";
+import { ArrowRight, Coins, Filter, Zap, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeroScene } from "@/components/marketing/hero-scene";
 
@@ -12,18 +12,18 @@ const displayFont = Space_Grotesk({
 const stripItems = [
   {
     icon: Coins,
-    title: "Paid-first",
-    copy: "Only real, paid requests enter your queue.",
+    title: "Instant monetization",
+    copy: "Start earning from your existing audience today, no product creation needed.",
   },
   {
-    icon: TimerReset,
-    title: "One queue",
-    copy: "Answer faster with one focused request flow.",
+    icon: Filter,
+    title: "Filter out noise",
+    copy: "Paid requests mean serious inquiries only; fewer time-wasters.",
   },
   {
-    icon: ShieldCheck,
-    title: "Clear money state",
-    copy: "Manual refunds and cashout stay visible.",
+    icon: Zap,
+    title: "Effortless setup",
+    copy: "No complicated integrations or learning curves; activate in minutes.",
   },
 ] as const;
 
@@ -56,14 +56,14 @@ export default function Page() {
             ...fadeUp(80).style,
           }}
         >
-          Paid requests, one simple flow.
+          Your attention is your most valuable asset.
         </h1>
 
         <p
           className="max-w-2xl text-base text-cyan-50/76 sm:text-lg"
           {...fadeUp(160)}
         >
-          A simple paid-request loop for creators: submission, response, refund, and cashout in one clean flow.
+          Stop underpricing it. Set your price, let your audience pay to ask, and get paid fairly for the expertise you&apos;re already giving away.
         </p>
 
         <div
@@ -77,7 +77,7 @@ export default function Page() {
             className="border-primary/60 bg-primary/90 px-5 text-primary-foreground disabled:cursor-not-allowed disabled:opacity-90"
           >
             <span className="inline-flex items-center gap-1.5">
-              Launching soon
+              Start monetizing your inbox
               <span className="inline-flex items-center gap-1" aria-hidden="true">
                 <span className="marketing-loading-dot" style={{ animationDelay: "0ms" }} />
                 <span className="marketing-loading-dot" style={{ animationDelay: "140ms" }} />
