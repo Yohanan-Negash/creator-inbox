@@ -20,7 +20,7 @@ async function fetchMemberBootstrapData(
       requestHeaders,
     });
   } catch {
-    return { error: "Failed to fetch Whop data." };
+    return { error: "App is down, try again later." };
   }
 }
 

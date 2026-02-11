@@ -70,8 +70,17 @@ export async function POST(request: NextRequest) {
     });
 
     const grossBalance = roundUsd(metrics.balanceAvailable ?? 0);
+    const minimumCashoutUsd = 5;
+
     if (grossBalance <= 0) {
       return NextResponse.json({ error: "No balance available to cash out." }, { status: 400 });
+    }
+
+    if (grossBalance < minimumCashoutUsd) {
+      return NextResponse.json(
+        { error: `Minimum cash out amount is $${minimumCashoutUsd}.` },
+        { status: 400 },
+      );
     }
 
     const originCompanyId = getPlatformCompanyId();
@@ -84,12 +93,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const creatorAmountUsd = roundUsd(grossBalance * 0.9);
-    const platformFeeUsd = roundUsd(grossBalance - creatorAmountUsd);
+    const creatorAmountUsd = grossBalance;
+    const platformFeeUsd = 0;
 
     if (creatorAmountUsd <= 0) {
       return NextResponse.json(
-        { error: "Balance is too low to cash out after platform split." },
+        { error: "Balance is too low to cash out." },
         { status: 400 },
       );
     }
