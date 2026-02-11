@@ -56,7 +56,7 @@ export default function Page() {
             ...fadeUp(80).style,
           }}
         >
-          Paid creator requests, handled with calm.
+          Paid requests, one simple inbox.
         </h1>
 
         <p

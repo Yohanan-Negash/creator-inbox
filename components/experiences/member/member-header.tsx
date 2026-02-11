@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type MemberHeaderProps = {
@@ -22,8 +22,10 @@ export function MemberHeader({
   return (
     <header className="flex items-center justify-between border-b border-zinc-200 pb-3">
       <div>
-        <h1 className="text-xl font-semibold">Creator Inbox</h1>
-        {/*<p className="text-xs text-zinc-500">Experience: {experienceId}</p>*/}
+        <p className="inline-flex items-center gap-2 border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-primary">
+          <Sparkles className="size-4" />
+          Creator Inbox
+        </p>
       </div>
       <div className="flex items-center gap-2">
         <Button
