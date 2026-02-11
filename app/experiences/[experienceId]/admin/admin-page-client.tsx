@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import type { SubmitEvent } from "react";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { Loader2, Shield } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -664,8 +664,11 @@ export default function AdminPageClient({
     <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-4 p-6">
       <header className="flex items-center justify-between border-b border-zinc-200 pb-3">
         <div>
-          <h1 className="text-xl font-semibold">Admin</h1>
-          <p className="text-xs text-zinc-500">Experience: {experienceId}</p>
+          <p className="mb-1 inline-flex items-center gap-2 border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-primary">
+            <Shield className="size-4" />
+            Admin Page
+          </p>
+          {/*<p className="text-xs text-zinc-500">Experience: {experienceId}</p>*/}
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -691,7 +694,7 @@ export default function AdminPageClient({
             ) : activeView === "metrics" ? (
               "Manage Requests"
             ) : (
-              "Submissions"
+              "Requests"
             )}
           </Button>
           <RequestTypeFormDialog

@@ -18,7 +18,7 @@ const stripItems = [
   {
     icon: TimerReset,
     title: "One queue",
-    copy: "Answer faster with one focused inbox flow.",
+    copy: "Answer faster with one focused request flow.",
   },
   {
     icon: ShieldCheck,
@@ -56,7 +56,7 @@ export default function Page() {
             ...fadeUp(80).style,
           }}
         >
-          Paid requests, one simple inbox.
+          Paid requests, one simple flow.
         </h1>
 
         <p

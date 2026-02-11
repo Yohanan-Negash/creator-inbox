@@ -100,7 +100,7 @@ export function MetricsSubmissionsSection({
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader>
-            <CardDescription>Total Submissions</CardDescription>
+            <CardDescription>Total Requests</CardDescription>
             <CardTitle>{metrics?.totalSubmissions ?? 0}</CardTitle>
           </CardHeader>
         </Card>
