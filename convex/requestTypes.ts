@@ -1,13 +1,38 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { REQUEST_TYPE_DESCRIPTION_MAX_LENGTH } from "../lib/request-types/constants";
+import {
+  REQUEST_TYPE_DESCRIPTION_MAX_LENGTH,
+  REQUEST_TYPE_TITLE_MAX_LENGTH,
+} from "../lib/request-types/constants";
+
+function ensureValidTitle(title: string) {
+  const normalizedTitle = title.trim();
+
+  if (normalizedTitle.length === 0) {
+    throw new Error("Title is required.");
+  }
+
+  if (normalizedTitle.length > REQUEST_TYPE_TITLE_MAX_LENGTH) {
+    throw new Error(`Title must be at most ${REQUEST_TYPE_TITLE_MAX_LENGTH} characters.`);
+  }
+
+  return normalizedTitle;
+}
 
 function ensureValidDescription(description: string) {
-  if (description.trim().length > REQUEST_TYPE_DESCRIPTION_MAX_LENGTH) {
+  const normalizedDescription = description.trim();
+
+  if (normalizedDescription.length === 0) {
+    throw new Error("Description is required.");
+  }
+
+  if (normalizedDescription.length > REQUEST_TYPE_DESCRIPTION_MAX_LENGTH) {
     throw new Error(
       `Description must be at most ${REQUEST_TYPE_DESCRIPTION_MAX_LENGTH} characters.`,
     );
   }
+
+  return normalizedDescription;
 }
 
 function ensureValidPricingInputs(price: number, responseWindowHours: number) {
@@ -63,14 +88,15 @@ export const createRequestType = mutation({
     responseWindowHours: v.number(),
   },
   handler: async (ctx, args) => {
-    ensureValidDescription(args.description);
+    const title = ensureValidTitle(args.title);
+    const description = ensureValidDescription(args.description);
     ensureValidPricingInputs(args.price, args.responseWindowHours);
 
     const requestTypeId = await ctx.db.insert("requestTypes", {
       experienceId: args.experienceId,
       creatorId: args.viewerUserId,
-      title: args.title,
-      description: args.description,
+      title,
+      description,
       price: args.price,
       responseWindowHours: args.responseWindowHours,
       isActive: true,
@@ -89,7 +115,7 @@ export const archiveRequestType = mutation({
   handler: async (ctx, args) => {
     const requestType = await ctx.db.get(args.requestTypeId);
     if (!requestType) {
-      throw new Error("Request type not found.");
+      throw new Error("Request not found.");
     }
 
     if (requestType.creatorId !== args.viewerUserId) {
@@ -97,7 +123,7 @@ export const archiveRequestType = mutation({
     }
 
     if (requestType.isDeleted === true) {
-      throw new Error("Request type no longer active.");
+      throw new Error("Request no longer active.");
     }
 
     await ctx.db.patch(args.requestTypeId, {
@@ -116,7 +142,7 @@ export const unarchiveRequestType = mutation({
   handler: async (ctx, args) => {
     const requestType = await ctx.db.get(args.requestTypeId);
     if (!requestType) {
-      throw new Error("Request type not found.");
+      throw new Error("Request not found.");
     }
 
     if (requestType.creatorId !== args.viewerUserId) {
@@ -124,7 +150,7 @@ export const unarchiveRequestType = mutation({
     }
 
     if (requestType.isDeleted === true) {
-      throw new Error("Request type no longer active.");
+      throw new Error("Request no longer active.");
     }
 
     await ctx.db.patch(args.requestTypeId, {
@@ -147,7 +173,7 @@ export const updateRequestType = mutation({
   handler: async (ctx, args) => {
     const requestType = await ctx.db.get(args.requestTypeId);
     if (!requestType) {
-      throw new Error("Request type not found.");
+      throw new Error("Request not found.");
     }
 
     if (requestType.creatorId !== args.viewerUserId) {
@@ -155,15 +181,16 @@ export const updateRequestType = mutation({
     }
 
     if (requestType.isDeleted === true) {
-      throw new Error("Request type no longer active.");
+      throw new Error("Request no longer active.");
     }
 
-    ensureValidDescription(args.description);
+    const title = ensureValidTitle(args.title);
+    const description = ensureValidDescription(args.description);
     ensureValidPricingInputs(args.price, args.responseWindowHours);
 
     await ctx.db.patch(args.requestTypeId, {
-      title: args.title,
-      description: args.description,
+      title,
+      description,
       price: args.price,
       responseWindowHours: args.responseWindowHours,
     });
@@ -180,7 +207,7 @@ export const softDeleteRequestType = mutation({
   handler: async (ctx, args) => {
     const requestType = await ctx.db.get(args.requestTypeId);
     if (!requestType) {
-      throw new Error("Request type not found.");
+      throw new Error("Request not found.");
     }
 
     if (requestType.creatorId !== args.viewerUserId) {

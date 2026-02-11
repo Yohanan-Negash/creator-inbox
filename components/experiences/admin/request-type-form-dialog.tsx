@@ -19,7 +19,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { REQUEST_TYPE_DESCRIPTION_MAX_LENGTH } from "@/lib/request-types/constants";
+import {
+  REQUEST_TYPE_DESCRIPTION_MAX_LENGTH,
+  REQUEST_TYPE_TITLE_MAX_LENGTH,
+} from "@/lib/request-types/constants";
 
 const responseWindowOptions = [1, 2, 4, 6, 12, 24, 48, 72, 168];
 
@@ -71,17 +74,17 @@ export function RequestTypeFormDialog({
         render={
           <Button
             size="sm"
-            className="bg-indigo-600 text-white hover:bg-indigo-700 hover:text-white"
+            className="bg-primary/90 text-primary-foreground hover:bg-primary hover:text-primary-foreground"
           />
         }
         onClick={onOpenCreateDialog}
       >
-        Create request type
+        Create request
       </DialogTrigger>
       <DialogContent showCloseButton={false} className="sm:max-w-lg">
         <form className="grid gap-4" onSubmit={onSubmit}>
           <DialogHeader>
-            <DialogTitle>{editingRequestTypeId ? "Edit request type" : "Create request type"}</DialogTitle>
+            <DialogTitle>{editingRequestTypeId ? "Edit request" : "Create request"}</DialogTitle>
             <DialogDescription>
               Keep it simple: title, short description, price, and response window.
             </DialogDescription>
@@ -93,11 +96,12 @@ export function RequestTypeFormDialog({
             </label>
             <Input
               id="request-type-title"
+              maxLength={REQUEST_TYPE_TITLE_MAX_LENGTH}
               value={formValues.title}
               onChange={(event) =>
                 onFormChange({
                   ...formValues,
-                  title: event.target.value,
+                  title: event.target.value.slice(0, REQUEST_TYPE_TITLE_MAX_LENGTH),
                 })
               }
               aria-invalid={Boolean(fieldErrors.title)}
@@ -105,6 +109,9 @@ export function RequestTypeFormDialog({
               disabled={submitPending || generatePending}
             />
             {fieldErrors.title ? <p className="text-xs text-red-600">{fieldErrors.title}</p> : null}
+            <p className="text-right text-[11px] text-zinc-500">
+              {formValues.title.length}/{REQUEST_TYPE_TITLE_MAX_LENGTH}
+            </p>
           </div>
 
           <div className="grid gap-1.5">

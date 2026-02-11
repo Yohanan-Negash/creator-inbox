@@ -214,9 +214,9 @@ export const listVisibleForUser = query({
         );
         const requestTypeLabel = requestType
           ? requestType.isDeleted === true || requestType.isActive === false
-            ? "Request type no longer active"
+            ? "Request no longer active"
             : requestType.title ?? submission.requestTypeTitleSnapshot
-          : "Request type no longer active";
+          : "Request no longer active";
 
         return {
           ...submission,
@@ -263,15 +263,15 @@ export const createSubmission = mutation({
 
     const requestType = await ctx.db.get(args.requestTypeId);
     if (!requestType) {
-      throw new Error("Request type not found.");
+      throw new Error("Request not found.");
     }
 
     if (!requestType.isActive) {
-      throw new Error("Request type is not active.");
+      throw new Error("Request is not active.");
     }
 
     if (requestType.experienceId !== args.experienceId) {
-      throw new Error("Request type does not belong to this experience.");
+      throw new Error("Request does not belong to this experience.");
     }
 
     const submissionId = await ctx.db.insert("submissions", {
@@ -430,9 +430,9 @@ export const listForAdminDashboard = query({
         );
         const requestTypeLabel = requestType
           ? requestType.isDeleted === true || requestType.isActive === false
-            ? "Request type no longer active"
+            ? "Request no longer active"
             : requestType.title ?? submission.requestTypeTitleSnapshot
-          : "Request type no longer active";
+          : "Request no longer active";
         const deadlineAt =
           submission.createdAt + submission.responseWindowHoursSnapshot * 60 * 60 * 1000;
 

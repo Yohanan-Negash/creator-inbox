@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
   Pagination,
@@ -66,6 +67,8 @@ export function SubmissionsView({
   onOpenSubmissionDetails,
   onSetSubmissionsPage,
 }: SubmissionsViewProps) {
+  const readSubmissionIdSet = useMemo(() => new Set(readSubmissionIds), [readSubmissionIds]);
+
   return (
     <section className="grid gap-3">
       <Card>
@@ -102,7 +105,7 @@ export function SubmissionsView({
           <CardHeader>
             <CardTitle>No submissions yet</CardTitle>
             <CardDescription>
-              Submit a request from the request types tab to get started.
+              Submit a request from the requests tab to get started.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -127,7 +130,7 @@ export function SubmissionsView({
                     const isUnread =
                       submission.status === "answered" &&
                       Boolean(submission.responseText) &&
-                      !readSubmissionIds.includes(rowId);
+                      !readSubmissionIdSet.has(rowId);
                     return (
                       <TableRow
                         key={rowId}

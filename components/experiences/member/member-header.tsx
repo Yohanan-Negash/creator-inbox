@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type MemberHeaderProps = {
@@ -6,6 +7,7 @@ type MemberHeaderProps = {
   devUserToken: string;
   activeView: "request-types" | "submissions";
   isAdmin: boolean;
+  togglePending: boolean;
   onToggleView: () => void;
 };
 
@@ -14,13 +16,14 @@ export function MemberHeader({
   devUserToken,
   activeView,
   isAdmin,
+  togglePending,
   onToggleView,
 }: MemberHeaderProps) {
   return (
     <header className="flex items-center justify-between border-b border-zinc-200 pb-3">
       <div>
         <h1 className="text-xl font-semibold">Creator Inbox</h1>
-        <p className="text-xs text-zinc-500">Experience: {experienceId}</p>
+        {/*<p className="text-xs text-zinc-500">Experience: {experienceId}</p>*/}
       </div>
       <div className="flex items-center gap-2">
         <Button
@@ -31,9 +34,19 @@ export function MemberHeader({
               ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
               : ""
           }
+          disabled={togglePending}
           onClick={onToggleView}
         >
-          {activeView === "submissions" ? "Request Types" : "My Submissions"}
+          {togglePending ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Loading...
+            </>
+          ) : activeView === "submissions" ? (
+            "Requests"
+          ) : (
+            "My Submissions"
+          )}
         </Button>
         {isAdmin ? (
           <Button
@@ -45,7 +58,7 @@ export function MemberHeader({
             }
             variant="outline"
             size="sm"
-            className="border-indigo-300 text-indigo-700 hover:bg-indigo-50 hover:text-indigo-800"
+            className="border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
           >
             Admin Page
           </Button>

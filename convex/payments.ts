@@ -22,15 +22,15 @@ export const getRequestTypeQuote = query({
   handler: async (ctx, args) => {
     const requestType = await ctx.db.get(args.requestTypeId);
     if (!requestType) {
-      throw new Error("Request type not found.");
+      throw new Error("Request not found.");
     }
 
     if (requestType.experienceId !== args.experienceId) {
-      throw new Error("Request type does not belong to this experience.");
+      throw new Error("Request does not belong to this experience.");
     }
 
     if (!requestType.isActive || requestType.isDeleted === true) {
-      throw new Error("Request type is not active.");
+      throw new Error("Request is not active.");
     }
 
     return {
@@ -58,19 +58,19 @@ export const upsertSubmissionPayment = mutation({
 
     const requestType = await ctx.db.get(args.requestTypeId);
     if (!requestType) {
-      throw new Error("Request type not found.");
+      throw new Error("Request not found.");
     }
 
     if (!requestType.isActive || requestType.isDeleted === true) {
-      throw new Error("Request type is not active.");
+      throw new Error("Request is not active.");
     }
 
     if (requestType.experienceId !== args.experienceId) {
-      throw new Error("Request type does not belong to this experience.");
+      throw new Error("Request does not belong to this experience.");
     }
 
     if (requestType.price !== args.amountUsd) {
-      throw new Error("Payment amount does not match request type price.");
+      throw new Error("Payment amount does not match request price.");
     }
 
     const existing = await ctx.db
@@ -146,15 +146,15 @@ export const completeSubmissionPayment = mutation({
 
     const requestType = await ctx.db.get(paymentRow.requestTypeId);
     if (!requestType) {
-      throw new Error("Request type not found.");
+      throw new Error("Request not found.");
     }
 
     if (!requestType.isActive || requestType.isDeleted === true) {
-      throw new Error("Request type is not active.");
+      throw new Error("Request is not active.");
     }
 
     if (requestType.experienceId !== paymentRow.experienceId) {
-      throw new Error("Request type does not belong to this experience.");
+      throw new Error("Request does not belong to this experience.");
     }
 
     const submissionId = await ctx.db.insert("submissions", {

@@ -1,6 +1,16 @@
 import type { Id } from "@/convex/_generated/dataModel";
 import { Loader2, Trash2 } from "lucide-react";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -56,7 +66,9 @@ type MetricsSubmissionsSectionProps = {
   onOpenAnswerDialog: (submissionId: Id<"submissions">) => void;
   onRefundSubmission: (submissionId: Id<"submissions">) => void;
   onDeleteSubmission: (submissionId: Id<"submissions">) => void;
-  onCashout: () => void;
+  onConfirmCashout: () => void;
+  cashoutConfirmOpen: boolean;
+  onSetCashoutConfirmOpen: (open: boolean) => void;
   cashoutPending: boolean;
   refundPendingId: Id<"submissions"> | null;
   deletePendingId: Id<"submissions"> | null;
@@ -73,7 +85,9 @@ export function MetricsSubmissionsSection({
   onOpenAnswerDialog,
   onRefundSubmission,
   onDeleteSubmission,
-  onCashout,
+  onConfirmCashout,
+  cashoutConfirmOpen,
+  onSetCashoutConfirmOpen,
   cashoutPending,
   refundPendingId,
   deletePendingId,
@@ -111,7 +125,7 @@ export function MetricsSubmissionsSection({
               size="sm"
               variant="outline"
               disabled={cashoutPending || balanceAvailable <= 0}
-              onClick={onCashout}
+              onClick={() => onSetCashoutConfirmOpen(true)}
             >
               {cashoutPending ? "Cashing out..." : "Cash out"}
             </Button>
@@ -151,7 +165,7 @@ export function MetricsSubmissionsSection({
               <TableHeader>
                 <TableRow>
                   <TableHead>User</TableHead>
-                  <TableHead>Request Type</TableHead>
+                  <TableHead>Request</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Deadline</TableHead>
@@ -281,6 +295,34 @@ export function MetricsSubmissionsSection({
               </PaginationContent>
             </Pagination>
           ) : null}
+
+          <AlertDialog open={cashoutConfirmOpen} onOpenChange={onSetCashoutConfirmOpen}>
+            <AlertDialogContent size="sm">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirm cash out?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  You are about to cash out ${balanceAvailable.toFixed(2)}. This transfers your
+                  available balance and cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={cashoutPending}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={onConfirmCashout}
+                  disabled={cashoutPending || balanceAvailable <= 0}
+                >
+                  {cashoutPending ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Cashing out...
+                    </>
+                  ) : (
+                    "Confirm cash out"
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
     </section>
