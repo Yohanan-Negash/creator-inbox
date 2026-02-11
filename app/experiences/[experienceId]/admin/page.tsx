@@ -21,7 +21,7 @@ async function fetchAdminBootstrapData(
       requestHeaders,
     });
   } catch {
-    return { error: "Failed to load access details." };
+    return { error: "App is down, try again later." };
   }
 }
 
