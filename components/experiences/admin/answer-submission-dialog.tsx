@@ -47,7 +47,7 @@ export function AnswerSubmissionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <form className="grid gap-3" onSubmit={onSubmitAnswer}>
           <DialogHeader>
             <DialogTitle>{canAnswer ? "Answer submission" : "Submission response"}</DialogTitle>
@@ -84,11 +84,15 @@ export function AnswerSubmissionDialog({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onClose}>
               Close
             </Button>
             {canAnswer ? (
-              <Button type="submit" disabled={answerPending || answerText.trim().length < 8}>
+              <Button
+                type="submit"
+                className="w-full sm:w-auto"
+                disabled={answerPending || answerText.trim().length < 8}
+              >
                 {answerPending ? "Sending..." : "Send response"}
               </Button>
             ) : null}

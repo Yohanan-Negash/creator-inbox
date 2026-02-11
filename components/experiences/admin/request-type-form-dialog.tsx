@@ -70,18 +70,21 @@ export function RequestTypeFormDialog({
 }: RequestTypeFormDialogProps) {
   return (
     <Dialog open={dialogOpen} onOpenChange={onOpenChange}>
-      <DialogTrigger
-        render={
-          <Button
-            size="sm"
-            className="bg-primary/90 text-primary-foreground hover:bg-primary hover:text-primary-foreground"
-          />
-        }
-        onClick={onOpenCreateDialog}
+        <DialogTrigger
+          render={
+            <Button
+              size="sm"
+              className="w-full bg-primary/90 text-primary-foreground hover:bg-primary hover:text-primary-foreground sm:w-auto"
+            />
+          }
+          onClick={onOpenCreateDialog}
+        >
+          Create request
+        </DialogTrigger>
+      <DialogContent
+        showCloseButton={false}
+        className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
       >
-        Create request
-      </DialogTrigger>
-      <DialogContent showCloseButton={false} className="sm:max-w-lg">
         <form className="grid gap-4" onSubmit={onSubmit}>
           <DialogHeader>
             <DialogTitle>{editingRequestTypeId ? "Edit request" : "Create request"}</DialogTitle>
@@ -147,7 +150,7 @@ export function RequestTypeFormDialog({
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <label className="text-xs font-medium" htmlFor="request-type-price">
                 Price (USD)
@@ -210,7 +213,7 @@ export function RequestTypeFormDialog({
               <Button
                 type="button"
                 variant="outline"
-                className="border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary"
+                className="w-full border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary sm:w-auto"
                 onClick={onGenerateWithAi}
                 disabled={submitPending || generatePending}
               >
@@ -229,7 +232,11 @@ export function RequestTypeFormDialog({
               {generateError ? <p className="text-xs text-red-600">{generateError}</p> : null}
             </div>
             <div className="flex flex-col gap-1">
-              <Button type="submit" disabled={submitPending || generatePending}>
+              <Button
+                type="submit"
+                className="w-full sm:w-auto"
+                disabled={submitPending || generatePending}
+              >
                 {submitPending ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
@@ -246,7 +253,7 @@ export function RequestTypeFormDialog({
             <Button
               type="button"
               variant="outline"
-              className="border-red-300 bg-white text-red-600 hover:bg-red-50 hover:text-red-700"
+              className="w-full border-red-300 bg-white text-red-600 hover:bg-red-50 hover:text-red-700 sm:w-auto"
               onClick={onCloseDialog}
               disabled={submitPending}
             >

@@ -124,6 +124,7 @@ export function MetricsSubmissionsSection({
               type="button"
               size="sm"
               variant="outline"
+              className="w-full"
               disabled={cashoutPending || balanceAvailable <= 0}
               onClick={() => onSetCashoutConfirmOpen(true)}
             >
@@ -161,77 +162,66 @@ export function MetricsSubmissionsSection({
           ) : null}
 
           {pagedSubmissions.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Request</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Deadline</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <div className="grid gap-2 md:hidden">
                 {pagedSubmissions.map((submission) => {
                   const canOpenResponse =
                     submission.status === "answered" ||
                     (submission.status === "pending" && submission.isWithinResponseWindow);
+
                   return (
-                    <TableRow
-                      key={String(submission._id)}
-                      className={canOpenResponse ? "cursor-pointer" : ""}
-                      onClick={() => {
-                        if (!canOpenResponse) {
-                          return;
-                        }
-                        onOpenAnswerDialog(submission._id);
-                      }}
-                    >
-                      <TableCell>{submission.userName}</TableCell>
-                      <TableCell>{submission.requestTypeLabel}</TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-flex rounded-none border px-2 py-0.5 text-[11px] ${getStatusPillClass(submission.status)}`}
-                        >
-                          {submission.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>{formatDateTime(submission.createdAt)}</TableCell>
-                      <TableCell>
+                    <div key={String(submission._id)} className="grid gap-2 border border-zinc-200 p-3">
+                      <button
+                        type="button"
+                        className={`grid gap-2 text-left ${canOpenResponse ? "cursor-pointer" : ""}`}
+                        onClick={() => {
+                          if (!canOpenResponse) {
+                            return;
+                          }
+                          onOpenAnswerDialog(submission._id);
+                        }}
+                      >
+                        <p className="text-sm font-medium text-zinc-900">{submission.requestTypeLabel}</p>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+                          <span>{submission.userName}</span>
+                          <span
+                            className={`inline-flex rounded-none border px-2 py-0.5 text-[11px] ${getStatusPillClass(submission.status)}`}
+                          >
+                            {submission.status}
+                          </span>
+                          <span className="font-medium text-zinc-900">${submission.amountUsd.toFixed(2)}</span>
+                        </div>
+                        <p className="text-xs text-zinc-600">Created: {formatDateTime(submission.createdAt)}</p>
+                        <p className="text-xs text-zinc-600">
+                          Deadline:{" "}
+                          {submission.status === "pending" && !submission.isWithinResponseWindow
+                            ? "Expired window"
+                            : formatDateTime(submission.deadlineAt)}
+                        </p>
+                      </button>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         {submission.status === "pending" && !submission.isWithinResponseWindow ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-red-600">Expired window</span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-7 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
-                              disabled={refundPendingId === submission._id}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                onRefundSubmission(submission._id);
-                              }}
-                            >
-                              {refundPendingId === submission._id ? "Refunding..." : "Refund"}
-                            </Button>
-                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            disabled={refundPendingId === submission._id}
+                            onClick={() => onRefundSubmission(submission._id)}
+                          >
+                            {refundPendingId === submission._id ? "Refunding..." : "Refund"}
+                          </Button>
                         ) : (
-                          formatDateTime(submission.deadlineAt)
+                          <span className="text-xs text-zinc-500">&nbsp;</span>
                         )}
-                      </TableCell>
-                      <TableCell className="text-right">${submission.amountUsd.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">
+
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           disabled={deletePendingId === submission._id}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onDeleteSubmission(submission._id);
-                          }}
+                          onClick={() => onDeleteSubmission(submission._id)}
                         >
                           {deletePendingId === submission._id ? (
                             "Deleting..."
@@ -242,17 +232,107 @@ export function MetricsSubmissionsSection({
                             </>
                           )}
                         </Button>
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                    </div>
                   );
                 })}
-              </TableBody>
-            </Table>
+              </div>
+
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Request</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Deadline</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagedSubmissions.map((submission) => {
+                      const canOpenResponse =
+                        submission.status === "answered" ||
+                        (submission.status === "pending" && submission.isWithinResponseWindow);
+                      return (
+                        <TableRow
+                          key={String(submission._id)}
+                          className={canOpenResponse ? "cursor-pointer" : ""}
+                          onClick={() => {
+                            if (!canOpenResponse) {
+                              return;
+                            }
+                            onOpenAnswerDialog(submission._id);
+                          }}
+                        >
+                          <TableCell>{submission.userName}</TableCell>
+                          <TableCell>{submission.requestTypeLabel}</TableCell>
+                          <TableCell>
+                            <span
+                              className={`inline-flex rounded-none border px-2 py-0.5 text-[11px] ${getStatusPillClass(submission.status)}`}
+                            >
+                              {submission.status}
+                            </span>
+                          </TableCell>
+                          <TableCell>{formatDateTime(submission.createdAt)}</TableCell>
+                          <TableCell>
+                            {submission.status === "pending" && !submission.isWithinResponseWindow ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-red-600">Expired window</span>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                  disabled={refundPendingId === submission._id}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    onRefundSubmission(submission._id);
+                                  }}
+                                >
+                                  {refundPendingId === submission._id ? "Refunding..." : "Refund"}
+                                </Button>
+                              </div>
+                            ) : (
+                              formatDateTime(submission.deadlineAt)
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">${submission.amountUsd.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={deletePendingId === submission._id}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onDeleteSubmission(submission._id);
+                              }}
+                            >
+                              {deletePendingId === submission._id ? (
+                                "Deleting..."
+                              ) : (
+                                <>
+                                  <Trash2 className="size-3.5" />
+                                  Delete
+                                </>
+                              )}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           ) : null}
 
           {dashboardSubmissions && dashboardSubmissions.length > submissionsPageSize ? (
             <Pagination>
-              <PaginationContent>
+              <PaginationContent className="flex-wrap justify-center">
                 <PaginationItem>
                   <PaginationPrevious
                     href="#"

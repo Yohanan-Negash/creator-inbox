@@ -616,7 +616,7 @@ export default function AdminPageClient({
 
   if (data?.error) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-4 p-6">
+      <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
         <Card>
           <CardHeader>
             <CardTitle>Access error</CardTitle>
@@ -639,7 +639,7 @@ export default function AdminPageClient({
 
   if (data?.access?.access_level !== "admin") {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-4 p-6">
+      <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
         <Card>
           <CardHeader>
             <CardTitle>Admin access required</CardTitle>
@@ -661,8 +661,8 @@ export default function AdminPageClient({
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-4 p-6">
-      <header className="flex items-center justify-between border-b border-zinc-200 pb-3">
+    <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
+      <header className="flex flex-col gap-3 border-b border-zinc-200 pb-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="mb-1 inline-flex items-center gap-2 border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-primary">
             <Shield className="size-4" />
@@ -670,15 +670,15 @@ export default function AdminPageClient({
           </p>
           {/*<p className="text-xs text-zinc-500">Experience: {experienceId}</p>*/}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
           <Button
             size="sm"
             variant="outline"
-            className={
+            className={`w-full sm:w-auto ${
               activeView === "metrics"
                 ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary"
                 : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
-            }
+            }`}
             disabled={viewTransitionPending}
             onClick={() => {
               startViewTransition(() => {
@@ -726,6 +726,7 @@ export default function AdminPageClient({
             render={<Link href={homeHref} />}
             variant="outline"
             size="sm"
+            className="w-full sm:w-auto"
           >
             Home Page
           </Button>

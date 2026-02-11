@@ -52,7 +52,7 @@ export function SubmitRequestDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={isCheckoutPhase ? "sm:max-w-md max-h-[90vh] overflow-y-auto" : "sm:max-w-md"}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         {isCheckoutPhase ? (
           <div className="grid gap-3">
             <DialogHeader>
@@ -91,7 +91,7 @@ export function SubmitRequestDialog({
 
             {!submissionPending ? (
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={onCheckoutCancel}>
+                <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onCheckoutCancel}>
                   Back
                 </Button>
               </DialogFooter>
@@ -133,12 +133,17 @@ export function SubmitRequestDialog({
               <Button
                 type="button"
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={onCancel}
                 disabled={submissionPending}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={submissionPending || submissionText.trim().length < 8}>
+              <Button
+                type="submit"
+                className="w-full sm:w-auto"
+                disabled={submissionPending || submissionText.trim().length < 8}
+              >
                 {submissionPending ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />

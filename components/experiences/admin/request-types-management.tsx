@@ -120,33 +120,36 @@ export function RequestTypesManagement({
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
                     <Button
                       size="sm"
                       variant="outline"
+                      className="w-full sm:w-auto"
                       onClick={() => onEdit(item)}
                       disabled={submitPending || isRowBusy}
                     >
                       Edit
                     </Button>
-                    <div className="flex items-center gap-2">
+                    <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start">
                       {isRowBusy ? <Loader2 className="size-4 animate-spin text-zinc-500" /> : null}
-                      <Button
-                        size="icon-sm"
-                        variant="outline"
-                        className="border-primary bg-white text-red-600 hover:bg-primary/5 hover:text-red-700"
-                        onClick={() => onSetDeleteConfirmId(item._id)}
-                        disabled={isRowBusy}
-                        aria-label={`Delete ${item.title}`}
-                      >
-                        <Trash2Icon className="size-4" />
-                      </Button>
-                      <Switch
-                        checked={item.isActive}
-                        disabled={isRowBusy}
-                        onCheckedChange={(checked) => onToggleStatus(item._id, checked)}
-                        aria-label={`Set ${item.title} visibility for members`}
-                      />
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          className="border-primary bg-white text-red-600 hover:bg-primary/5 hover:text-red-700"
+                          onClick={() => onSetDeleteConfirmId(item._id)}
+                          disabled={isRowBusy}
+                          aria-label={`Delete ${item.title}`}
+                        >
+                          <Trash2Icon className="size-4" />
+                        </Button>
+                        <Switch
+                          checked={item.isActive}
+                          disabled={isRowBusy}
+                          onCheckedChange={(checked) => onToggleStatus(item._id, checked)}
+                          aria-label={`Set ${item.title} visibility for members`}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -157,7 +160,7 @@ export function RequestTypesManagement({
 
         {requestTypes && requestTypes.length > pageSize ? (
           <Pagination>
-            <PaginationContent>
+            <PaginationContent className="flex-wrap justify-center">
               <PaginationItem>
                 <PaginationPrevious
                   href="#"

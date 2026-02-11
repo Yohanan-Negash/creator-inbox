@@ -80,7 +80,7 @@ export function SubmissionsView({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="rounded-none border border-zinc-200 px-2 py-1 text-zinc-600">
               {submissions?.length ?? 0} total
             </span>
@@ -113,7 +113,47 @@ export function SubmissionsView({
 
       {submissions && submissions.length > 0 ? (
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <Card>
+          <div className="grid gap-3 lg:hidden">
+            {pagedSubmissions.map((submission) => {
+              const rowId = String(submission._id);
+              const isUnread =
+                submission.status === "answered" &&
+                Boolean(submission.responseText) &&
+                !readSubmissionIdSet.has(rowId);
+              const isSelected = selectedSubmissionId === submission._id;
+
+              return (
+                <button
+                  key={rowId}
+                  type="button"
+                  onClick={() => onOpenSubmissionDetails(submission._id)}
+                  className={`grid gap-2 border p-3 text-left transition-colors ${
+                    isSelected ? "border-primary/40 bg-primary/5" : "border-zinc-200"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium text-zinc-900">{submission.requestTypeLabel}</p>
+                    {isUnread ? (
+                      <span className="rounded-none border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">
+                        Unread
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+                    <span
+                      className={`inline-flex rounded-none border px-2 py-0.5 text-[11px] ${getStatusPillClass(submission.status)}`}
+                    >
+                      {submission.status}
+                    </span>
+                    <span>{formatDateTime(submission.createdAt)}</span>
+                    <span className="font-medium text-zinc-900">${submission.amountUsd.toFixed(2)}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <Card className="hidden lg:block">
             <CardContent className="pt-1">
               <Table>
                 <TableHeader>
@@ -205,7 +245,7 @@ export function SubmissionsView({
 
           {submissions.length > submissionsPageSize ? (
             <Pagination className="lg:col-span-2">
-              <PaginationContent>
+              <PaginationContent className="flex-wrap justify-center">
                 <PaginationItem>
                   <PaginationPrevious
                     href="#"

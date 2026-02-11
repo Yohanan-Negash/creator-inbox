@@ -20,22 +20,22 @@ export function MemberHeader({
   onToggleView,
 }: MemberHeaderProps) {
   return (
-    <header className="flex items-center justify-between border-b border-zinc-200 pb-3">
+    <header className="flex flex-col gap-3 border-b border-zinc-200 pb-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <p className="inline-flex items-center gap-2 border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-primary">
           <MessageSquare className="size-4" />
           Creator Inbox
         </p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
         <Button
           variant="outline"
           size="sm"
-          className={
+          className={`w-full sm:w-auto ${
             activeView === "submissions"
               ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
               : ""
-          }
+          }`}
           disabled={togglePending}
           onClick={onToggleView}
         >
@@ -60,7 +60,7 @@ export function MemberHeader({
             }
             variant="outline"
             size="sm"
-            className="border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
+            className="w-full border-primary/30 text-primary hover:bg-primary/5 hover:text-primary sm:w-auto"
           >
             Admin Page
           </Button>

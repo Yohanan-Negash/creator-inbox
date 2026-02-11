@@ -362,7 +362,7 @@ export default function ExperiencePageClient({
   const loading = false;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 p-6">
+    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 p-4 sm:gap-6 sm:p-6">
       <MemberHeader
         experienceId={experienceId}
         devUserToken={devUserToken}

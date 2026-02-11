@@ -26,7 +26,7 @@ export function RequestTypesView({ requestTypes, onOpenSubmitDialog }: RequestTy
   return (
     <section className="flex flex-col gap-3">
       <div>
-        <h2 className="text-base font-medium">Available requests</h2>
+        <h2 className="text-sm font-medium sm:text-base">Available requests</h2>
         <p className="text-xs text-zinc-500">Pick one to submit a paid request.</p>
       </div>
 
@@ -50,15 +50,15 @@ export function RequestTypesView({ requestTypes, onOpenSubmitDialog }: RequestTy
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm line-clamp-1">
+                <p className="text-sm leading-relaxed">
                   <span className="font-medium text-primary">${item.price.toFixed(2)}</span>
                   <span className="text-zinc-400"> · </span>
                   <span className="text-amber-600">{item.responseWindowHours}h response window</span>
                 </p>
               </CardContent>
-              <CardFooter className="mt-auto justify-between">
+              <CardFooter className="mt-auto flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-zinc-500">Text response only</p>
-                <Button size="sm" onClick={() => onOpenSubmitDialog(item)}>
+                <Button size="sm" className="w-full sm:w-auto" onClick={() => onOpenSubmitDialog(item)}>
                   Submit Request
                 </Button>
               </CardFooter>
