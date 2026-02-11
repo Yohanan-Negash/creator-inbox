@@ -86,9 +86,6 @@ export default function Page() {
             </span>
             <ArrowRight data-icon="inline-end" />
           </Button>
-          <span className="border border-cyan-100/18 px-3 py-2 text-xs text-cyan-50/72">
-            Public app entry opens at launch
-          </span>
         </div>
       </div>
 

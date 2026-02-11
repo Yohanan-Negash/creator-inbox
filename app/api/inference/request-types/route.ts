@@ -86,18 +86,18 @@ export async function POST(request: Request) {
         userId,
       });
       return NextResponse.json(
-        { error: "Only experience admins can generate request types." },
+        { error: "Only experience admins can generate requests." },
         { status: 403 },
       );
     }
 
     const contextFromExisting = parsed.data.existingRequestTypes?.length
       ? `Existing types: ${parsed.data.existingRequestTypes.map((item) => item.title).join(", ")}. Build something distinct and complementary.`
-      : "No existing request types yet. Propose a strong starter offer.";
+      : "No existing requests yet. Propose a strong starter offer.";
 
     const generateInput = GenerateRequestTypesInputSchema.parse({
       experienceId: parsed.data.experienceId,
-      prompt: `${parsed.data.intent}. Generate one fresh request type idea with clear value and a specific text-response deliverable.`,
+      prompt: `${parsed.data.intent}. Generate one fresh request idea with clear value and a specific text-response deliverable.`,
       creatorContext: contextFromExisting,
       targetAudience: "Fans or clients buying creator support and personalized outcomes.",
       count: 1,

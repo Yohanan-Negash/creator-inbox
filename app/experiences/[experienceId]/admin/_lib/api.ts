@@ -64,7 +64,7 @@ export async function postRequestTypeAction(
 
   const payload = (await response.json()) as ErrorPayload;
   if (!response.ok) {
-    throw new Error(getErrorMessage(payload, "Request type action failed."));
+    throw new Error(getErrorMessage(payload, "Request action failed."));
   }
 }
 

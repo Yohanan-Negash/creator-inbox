@@ -77,22 +77,22 @@ export function RequestTypesManagement({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Request types</CardTitle>
+        <CardTitle>Requests</CardTitle>
         <CardDescription>
-          Create and edit request types. Use the switch to control whether each request type is
-          visible to members in your experience. Use the trash button to remove it from the list.
+          Create and edit requests. Use the switch to control whether each request is visible to
+          members in your experience. Use the trash button to remove it from the list.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
         {requestTypes === undefined ? (
           <div className="flex items-center gap-2 text-xs text-zinc-500">
             <Loader2 className="size-4 animate-spin" />
-            Loading request types...
+            Loading requests...
           </div>
         ) : null}
 
         {requestTypes !== undefined && requestTypes.length === 0 ? (
-          <p className="text-xs text-zinc-500">No request types yet.</p>
+          <p className="text-xs text-zinc-500">No requests yet.</p>
         ) : null}
 
         {statusError ? <p className="text-xs text-red-600">{statusError}</p> : null}
@@ -202,10 +202,10 @@ export function RequestTypesManagement({
         <AlertDialog open={Boolean(deleteConfirmId)} onOpenChange={(open) => !open && onSetDeleteConfirmId(null)}>
           <AlertDialogContent size="sm">
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete request type?</AlertDialogTitle>
+              <AlertDialogTitle>Delete request?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently remove this request type from your list. This action cannot
-                be undone and is non-recoverable.
+                This will permanently remove this request from your list. This action cannot be
+                undone and is non-recoverable.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

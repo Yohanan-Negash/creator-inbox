@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@/convex/_generated/api";
-import { getConvexServerClient } from "@/lib/convex-server";
+import { getAdminBootstrapData } from "@/lib/experiences/bootstrap-data";
 import { getSafeErrorMessage } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { getWhopSdk } from "@/lib/whop";
 
 export async function GET(
   request: NextRequest,
@@ -13,41 +11,14 @@ export async function GET(
   const route = "/api/whop/experiences/[experienceId]/admin-data";
 
   try {
-    const whopSdk = getWhopSdk();
-    const convex = getConvexServerClient();
     const devUserToken = request.nextUrl.searchParams.get("whop-dev-user-token") ?? "";
+    const payload = await getAdminBootstrapData({
+      experienceId,
+      devUserToken,
+      requestHeaders: request.headers,
+    });
 
-    const token = await whopSdk.verifyUserToken(devUserToken || request.headers);
-    const viewerUserId = token.userId;
-
-    const access = await whopSdk.users.checkAccess(experienceId, { id: viewerUserId });
-    if (access.access_level !== "admin") {
-      return NextResponse.json({ error: "Admin access required." }, { status: 403 });
-    }
-
-    const [requestTypes, dashboardSubmissions, metrics] = await Promise.all([
-      convex.query(api.requestTypes.listByExperienceCreator, {
-        experienceId,
-        viewerUserId,
-      }),
-      convex.query(api.submissions.listForAdminDashboard, {
-        experienceId,
-        viewerUserId,
-      }),
-      convex.query(api.submissions.getAdminMetrics, {
-        experienceId,
-        viewerUserId,
-      }),
-    ]);
-
-    return NextResponse.json(
-      {
-        requestTypes,
-        dashboardSubmissions,
-        metrics,
-      },
-      { status: 200 },
-    );
+    return NextResponse.json(payload, { status: 200 });
   } catch (error) {
     logger.error("Admin data route failed", {
       route,

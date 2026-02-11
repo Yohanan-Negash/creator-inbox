@@ -4,12 +4,13 @@ import { api } from "@/convex/_generated/api";
 import { getConvexServerClient } from "@/lib/convex-server";
 import { getSafeErrorMessage } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { REQUEST_TYPE_TITLE_MAX_LENGTH } from "@/lib/request-types/constants";
 import { getWhopSdk } from "@/lib/whop";
 
 const actionSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("create"),
-    title: z.string().min(1),
+    title: z.string().trim().min(1).max(REQUEST_TYPE_TITLE_MAX_LENGTH),
     description: z.string().min(1),
     price: z.number(),
     responseWindowHours: z.number(),
@@ -18,7 +19,7 @@ const actionSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("update"),
     requestTypeId: z.string().min(1),
-    title: z.string().min(1),
+    title: z.string().trim().min(1).max(REQUEST_TYPE_TITLE_MAX_LENGTH),
     description: z.string().min(1),
     price: z.number(),
     responseWindowHours: z.number(),
