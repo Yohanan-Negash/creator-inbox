@@ -43,7 +43,7 @@ export function RequestTypesView({ requestTypes, onOpenSubmitDialog }: RequestTy
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {requestTypes.map((item) => (
-            <Card key={item._id} className="h-full min-h-[220px]">
+            <Card key={item._id} className="min-h-[220px]">
               <CardHeader className="gap-2">
                 <CardTitle className="line-clamp-1">{item.title}</CardTitle>
                 <CardDescription className="line-clamp-3 min-h-[60px]">
