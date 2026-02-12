@@ -77,8 +77,8 @@ describe("submissions.createSubmission + metrics", () => {
         requestTypeId: requestType._id,
         viewerUserId: "member-2",
         viewerUserName: "member2",
-        submissionText: "short",
+        submissionText: "hey",
       }),
-    ).rejects.toThrowError("Submission text must be at least 8 characters.");
+    ).rejects.toThrowError("Submission text must be at least 5 characters.");
   });
 });

@@ -59,7 +59,11 @@ export function SubmitRequestDialog({
               <DialogTitle>Complete payment</DialogTitle>
               <DialogDescription>
                 {selectedRequestType
-                  ? `${selectedRequestType.title} — $${selectedRequestType.price.toFixed(2)}`
+                  ? `${selectedRequestType.title} — ${
+                      selectedRequestType.price === 0
+                        ? "Free"
+                        : `$${selectedRequestType.price.toFixed(2)}`
+                    }`
                   : "Complete your payment to submit your request."}
               </DialogDescription>
             </DialogHeader>
@@ -102,15 +106,18 @@ export function SubmitRequestDialog({
             <DialogHeader>
               <DialogTitle>Submit request</DialogTitle>
               <DialogDescription>
-                Payment is required before submission is created. Add clear details so the creator
-                can help quickly.
+                Add clear details so the creator can help quickly.
               </DialogDescription>
             </DialogHeader>
 
             {selectedRequestType ? (
               <div className="rounded-none border border-zinc-200 p-2 text-xs text-zinc-600">
                 <p className="font-medium text-zinc-800">{selectedRequestType.title}</p>
-                <p>${selectedRequestType.price.toFixed(2)} charge will be processed on submit</p>
+                <p>
+                  {selectedRequestType.price === 0
+                    ? "This request is free and will be submitted instantly."
+                    : `$${selectedRequestType.price.toFixed(2)} charge will be processed on submit`}
+                </p>
               </div>
             ) : null}
 
@@ -126,6 +133,7 @@ export function SubmitRequestDialog({
                 className="min-h-28"
                 disabled={submissionPending}
               />
+              <p className="text-[11px] text-zinc-500">Minimum 5 characters.</p>
               {submissionError ? <p className="text-xs text-red-600">{submissionError}</p> : null}
             </div>
 
@@ -142,7 +150,7 @@ export function SubmitRequestDialog({
               <Button
                 type="submit"
                 className="w-full sm:w-auto"
-                disabled={submissionPending || submissionText.trim().length < 8}
+                disabled={submissionPending || submissionText.trim().length < 5}
               >
                 {submissionPending ? (
                   <>

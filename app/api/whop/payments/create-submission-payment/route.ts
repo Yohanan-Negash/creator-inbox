@@ -4,12 +4,13 @@ import { api } from "@/convex/_generated/api";
 import { getSafeErrorMessage } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { getWhopSdk } from "@/lib/whop";
+import { notifyAdminSubmissionCreated } from "@/lib/whop-notifications";
 import { getConvexServerClient } from "@/lib/convex-server";
 
 const createSubmissionPaymentSchema = z.object({
   experienceId: z.string().min(1),
   requestTypeId: z.string().min(1),
-  submissionText: z.string().min(8).max(2000),
+  submissionText: z.string().min(5).max(2000),
   whopDevUserToken: z.string().optional(),
 });
 
@@ -93,10 +94,51 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "You do not have access to this experience." }, { status: 403 });
     }
 
+    const user = await whopSdk.users.retrieve(viewerUserId);
+    const viewerUserName = user.username?.trim() || user.name?.trim() || viewerUserId;
+
     const quote = await convex.query(api.payments.getRequestTypeQuote, {
       experienceId: parsed.data.experienceId,
       requestTypeId: parsed.data.requestTypeId as never,
     });
+
+    if (quote.price === 0) {
+      await convex.mutation(api.submissions.createSubmission, {
+        experienceId: parsed.data.experienceId,
+        requestTypeId: parsed.data.requestTypeId as never,
+        viewerUserId,
+        viewerUserName,
+        submissionText: parsed.data.submissionText,
+      });
+
+      await notifyAdminSubmissionCreated({
+        experienceId: parsed.data.experienceId,
+        creatorUserId: quote.creatorId,
+        requesterUserName: viewerUserName,
+        requestTypeTitle: quote.title,
+      });
+
+      logger.info("Free submission created without checkout", {
+        ...baseLog,
+        event: "whop.payment.free_submission.created",
+        viewerUserId,
+        experienceId: parsed.data.experienceId,
+        requestTypeId: String(quote.requestTypeId),
+      });
+
+      return NextResponse.json(
+        {
+          status: "paid",
+          submissionCreated: true,
+          paymentId: null,
+          checkoutConfigurationId: null,
+          planId: null,
+          purchaseUrl: null,
+          redirectUrl: null,
+        },
+        { status: 200 },
+      );
+    }
 
     // Idempotency: return existing pending checkout if one matches
     const existingPending = await convex.query(api.payments.findPendingPaymentForUser, {
@@ -138,9 +180,6 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-
-    const user = await whopSdk.users.retrieve(viewerUserId);
-    const viewerUserName = user.username?.trim() || user.name?.trim() || viewerUserId;
 
     const { companyId, productId } = getPlatformIds();
     const { creatorCompanyId, creatorProductId } = await getExperienceDetails(

@@ -12,7 +12,7 @@ export const GeneratedRequestTypeSchema = z.object({
     .trim()
     .min(1)
     .max(REQUEST_TYPE_DESCRIPTION_MAX_LENGTH),
-  price: z.number().positive(),
+  price: z.number().min(0),
   responseWindowHours: z.number().int().positive(),
 });
 
@@ -60,11 +60,11 @@ export const GenerateRequestTypesInputSchema = z.object({
     .default(3),
   existingRequestTypes: z
     .array(
-      z.object({
-        title: z.string().trim().min(1).max(REQUEST_TYPE_TITLE_MAX_LENGTH),
-        price: z.number().positive().optional(),
-        responseWindowHours: z.number().int().positive().optional(),
-      }),
+        z.object({
+          title: z.string().trim().min(1).max(REQUEST_TYPE_TITLE_MAX_LENGTH),
+          price: z.number().min(0).optional(),
+          responseWindowHours: z.number().int().positive().optional(),
+        }),
     )
     .max(10)
     .optional(),
@@ -84,11 +84,11 @@ export const GenerateRequestTypesRouteInputSchema = z.object({
     .max(160, "intent must be at most 160 characters."),
   existingRequestTypes: z
     .array(
-      z.object({
-        title: z.string().trim().min(1).max(REQUEST_TYPE_TITLE_MAX_LENGTH),
-        price: z.number().positive().optional(),
-        responseWindowHours: z.number().int().positive().optional(),
-      }),
+        z.object({
+          title: z.string().trim().min(1).max(REQUEST_TYPE_TITLE_MAX_LENGTH),
+          price: z.number().min(0).optional(),
+          responseWindowHours: z.number().int().positive().optional(),
+        }),
     )
     .max(10)
     .optional(),

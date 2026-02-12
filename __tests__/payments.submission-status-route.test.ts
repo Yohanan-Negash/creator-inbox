@@ -7,6 +7,7 @@ const mockPaymentsRetrieve = vi.fn();
 const mockPaymentsList = vi.fn();
 const mockConvexQuery = vi.fn();
 const mockConvexMutation = vi.fn();
+const mockNotifyAdminSubmissionCreated = vi.fn();
 
 async function* listResults(items: Array<unknown>) {
   for (const item of items) {
@@ -34,6 +35,10 @@ vi.mock("@/lib/convex-server", () => ({
   }),
 }));
 
+vi.mock("@/lib/whop-notifications", () => ({
+  notifyAdminSubmissionCreated: mockNotifyAdminSubmissionCreated,
+}));
+
 describe("GET /api/whop/payments/submission-status", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -41,6 +46,7 @@ describe("GET /api/whop/payments/submission-status", () => {
     mockVerifyUserToken.mockResolvedValue({ userId: "user_1" });
     mockCheckAccess.mockResolvedValue({ has_access: true });
     mockPaymentsList.mockReturnValue(listResults([]));
+    mockNotifyAdminSubmissionCreated.mockResolvedValue(true);
   });
 
   it("does not retrieve Whop payment for pending checkout tokens", async () => {
@@ -88,6 +94,17 @@ describe("GET /api/whop/payments/submission-status", () => {
         },
       ]),
     );
+    mockConvexMutation
+      .mockResolvedValueOnce({
+        paymentId: "pay_123",
+      })
+      .mockResolvedValueOnce({
+        created: true,
+        experienceId: "exp_1",
+        creatorUserId: "creator_1",
+        requesterUserName: "member_1",
+        requestTypeTitle: "Growth strategy",
+      });
 
     const { GET } = await import("../app/api/whop/payments/submission-status/route");
 
@@ -107,6 +124,12 @@ describe("GET /api/whop/payments/submission-status", () => {
     });
     expect(mockConvexMutation.mock.calls[1][1]).toEqual({
       paymentId: "pay_123",
+    });
+    expect(mockNotifyAdminSubmissionCreated).toHaveBeenCalledWith({
+      experienceId: "exp_1",
+      creatorUserId: "creator_1",
+      requesterUserName: "member_1",
+      requestTypeTitle: "Growth strategy",
     });
   });
 
@@ -133,6 +156,17 @@ describe("GET /api/whop/payments/submission-status", () => {
         submissionId: "sub_1",
         lastError: null,
       });
+    mockConvexMutation
+      .mockResolvedValueOnce({
+        paymentId: "pay_123",
+      })
+      .mockResolvedValueOnce({
+        created: true,
+        experienceId: "exp_1",
+        creatorUserId: "creator_1",
+        requesterUserName: "member_1",
+        requestTypeTitle: "Growth strategy",
+      });
 
     const { GET } = await import("../app/api/whop/payments/submission-status/route");
 
@@ -152,6 +186,12 @@ describe("GET /api/whop/payments/submission-status", () => {
     });
     expect(mockConvexMutation.mock.calls[1][1]).toEqual({
       paymentId: "pay_123",
+    });
+    expect(mockNotifyAdminSubmissionCreated).toHaveBeenCalledWith({
+      experienceId: "exp_1",
+      creatorUserId: "creator_1",
+      requesterUserName: "member_1",
+      requestTypeTitle: "Growth strategy",
     });
   });
 });

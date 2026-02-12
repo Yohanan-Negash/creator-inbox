@@ -5,6 +5,7 @@ import { getSafeErrorMessage } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { getWhopSdk } from "@/lib/whop";
 import { getConvexServerClient } from "@/lib/convex-server";
+import { notifyUserSubmissionRefunded } from "@/lib/whop-notifications";
 
 const refundSubmissionSchema = z.object({
   experienceId: z.string().min(1),
@@ -140,7 +141,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    let refunded: { _id?: string } | null = null;
+    let refunded: {
+      _id: string;
+      experienceId: string;
+      userId: string;
+      creatorId: string;
+      requestTypeTitleSnapshot: string;
+    } | null = null;
     try {
       refunded = await finalizeSubmissionRefundWithRetry(
         convex,
@@ -160,6 +167,15 @@ export async function POST(request: NextRequest) {
         });
       }
       throw error;
+    }
+
+    if (refunded) {
+      await notifyUserSubmissionRefunded({
+        experienceId: refunded.experienceId,
+        requesterUserId: refunded.userId,
+        creatorUserId: refunded.creatorId,
+        requestTypeTitle: refunded.requestTypeTitleSnapshot,
+      });
     }
 
     return NextResponse.json(

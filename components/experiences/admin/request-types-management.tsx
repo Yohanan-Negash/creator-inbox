@@ -1,6 +1,7 @@
 import type { Id } from "@/convex/_generated/dataModel";
 import { Loader2, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -115,7 +116,13 @@ export function RequestTypesManagement({
                     <p className="text-sm font-medium">{item.title}</p>
                     <p className="text-xs text-zinc-500">{item.description}</p>
                     <p className="text-xs text-zinc-500">
-                      ${item.price.toFixed(2)} · {item.responseWindowHours}h response window ·{" "}
+                      {item.price === 0 ? (
+                        <Badge variant="secondary" className="mr-1 align-middle">
+                          Free
+                        </Badge>
+                      ) : (
+                        `$${item.price.toFixed(2)}`
+                      )} {item.responseWindowHours}h response window · {" "}
                       {item.isActive ? "Active" : "Archived"}
                     </p>
                   </div>

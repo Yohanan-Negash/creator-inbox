@@ -36,8 +36,8 @@ function ensureValidDescription(description: string) {
 }
 
 function ensureValidPricingInputs(price: number, responseWindowHours: number) {
-  if (!Number.isInteger(price) || price <= 0) {
-    throw new Error("Price must be a positive whole number.");
+  if (!Number.isInteger(price) || price < 0) {
+    throw new Error("Price must be a non-negative whole number.");
   }
 
   if (!Number.isInteger(responseWindowHours) || responseWindowHours <= 0) {

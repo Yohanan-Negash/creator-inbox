@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 const mockWebhookUnwrap = vi.fn();
 const mockPaymentsRetrieve = vi.fn();
 const mockConvexMutation = vi.fn();
+const mockNotifyAdminSubmissionCreated = vi.fn();
 
 vi.mock("@/lib/whop", () => ({
   getWhopSdk: () => ({
@@ -22,10 +23,15 @@ vi.mock("@/lib/convex-server", () => ({
   }),
 }));
 
+vi.mock("@/lib/whop-notifications", () => ({
+  notifyAdminSubmissionCreated: mockNotifyAdminSubmissionCreated,
+}));
+
 describe("POST /api/whop/payments/webhook", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.WHOP_WEBHOOK_SECRET = "test-secret";
+    mockNotifyAdminSubmissionCreated.mockResolvedValue(true);
   });
 
   it("returns 401 when webhook signature is invalid", async () => {
@@ -60,6 +66,18 @@ describe("POST /api/whop/payments/webhook", () => {
       },
     });
 
+    mockConvexMutation
+      .mockResolvedValueOnce({
+        paymentId: "pay_123",
+      })
+      .mockResolvedValueOnce({
+        created: true,
+        experienceId: "exp_1",
+        creatorUserId: "creator_1",
+        requesterUserName: "member_1",
+        requestTypeTitle: "Growth strategy",
+      });
+
     const { POST } = await import("../app/api/whop/payments/webhook/route");
     const request = new NextRequest("https://example.com/api/whop/payments/webhook", {
       method: "POST",
@@ -81,6 +99,12 @@ describe("POST /api/whop/payments/webhook", () => {
     });
     expect(mockConvexMutation.mock.calls[1][1]).toEqual({
       paymentId: "pay_123",
+    });
+    expect(mockNotifyAdminSubmissionCreated).toHaveBeenCalledWith({
+      experienceId: "exp_1",
+      creatorUserId: "creator_1",
+      requesterUserName: "member_1",
+      requestTypeTitle: "Growth strategy",
     });
   });
 });

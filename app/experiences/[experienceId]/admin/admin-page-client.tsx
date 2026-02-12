@@ -53,7 +53,7 @@ const requestTypeFormSchema = z.object({
   price: z.coerce
     .number()
     .int("Price must be a whole number.")
-    .positive("Price must be greater than 0."),
+    .min(0, "Price must be 0 or greater."),
   responseWindowHours: z.coerce
     .number()
     .int("Response window must be a whole number.")
@@ -297,7 +297,7 @@ export default function AdminPageClient({
       if (pendingTitle.length > 0) {
         draftExisting.push({
           title: pendingTitle,
-          price: Number(formValues.price) > 0 ? Number(formValues.price) : undefined,
+          price: Number(formValues.price) >= 0 ? Number(formValues.price) : undefined,
           responseWindowHours:
             Number(formValues.responseWindowHours) > 0
               ? Number(formValues.responseWindowHours)
@@ -719,6 +719,16 @@ export default function AdminPageClient({
             onSubmit={handleSubmit}
             onCloseDialog={handleCloseDialog}
             onGenerateWithAi={handleGenerateWithAi}
+            onSetFreePrice={() => {
+              setFieldErrors((current) => ({
+                ...current,
+                price: undefined,
+              }));
+              setFormValues((current) => ({
+                ...current,
+                price: "0",
+              }));
+            }}
             onFormChange={setFormValues}
           />
 

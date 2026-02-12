@@ -1,5 +1,6 @@
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -27,7 +28,7 @@ export function RequestTypesView({ requestTypes, onOpenSubmitDialog }: RequestTy
     <section className="flex flex-col gap-3">
       <div>
         <h2 className="text-sm font-medium sm:text-base">Available requests</h2>
-        <p className="text-xs text-zinc-500">Pick one to submit a paid request.</p>
+        <p className="text-xs text-zinc-500">Pick one to submit your request.</p>
       </div>
 
       {requestTypes.length === 0 ? (
@@ -51,7 +52,13 @@ export function RequestTypesView({ requestTypes, onOpenSubmitDialog }: RequestTy
               </CardHeader>
               <CardContent>
                 <p className="text-sm leading-relaxed">
-                  <span className="font-medium text-primary">${item.price.toFixed(2)}</span>
+                  {item.price === 0 ? (
+                    <Badge variant="secondary" className="mr-2 align-middle">
+                      Free
+                    </Badge>
+                  ) : (
+                    <span className="font-medium text-primary">${item.price.toFixed(2)}</span>
+                  )}
                   <span className="text-zinc-400"> · </span>
                   <span className="text-amber-600">{item.responseWindowHours}h response window</span>
                 </p>

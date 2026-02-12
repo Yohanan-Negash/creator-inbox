@@ -10,6 +10,26 @@ import {
   getWhopCheckoutConfigurationIdFromPayment,
   getWhopPaymentId,
 } from "@/lib/whop-payments";
+import { notifyAdminSubmissionCreated } from "@/lib/whop-notifications";
+
+async function completePaymentAndNotify(convex: ReturnType<typeof getConvexServerClient>, paymentId: string) {
+  const completion = await convex.mutation(api.payments.completeSubmissionPayment, {
+    paymentId,
+  });
+
+  if (!completion.created) {
+    return completion;
+  }
+
+  await notifyAdminSubmissionCreated({
+    experienceId: completion.experienceId,
+    creatorUserId: completion.creatorUserId,
+    requesterUserName: completion.requesterUserName,
+    requestTypeTitle: completion.requestTypeTitle,
+  });
+
+  return completion;
+}
 
 function getPlatformCompanyId() {
   const companyId = process.env.WHOP_COMPANY_ID?.trim() ?? "";
@@ -127,9 +147,7 @@ export async function GET(request: NextRequest) {
 
             const resolvedStatus = extractWhopPaymentStatus(payment);
             if (resolvedStatus === "paid") {
-              await convex.mutation(api.payments.completeSubmissionPayment, {
-                paymentId: resolvedPaymentId,
-              });
+              await completePaymentAndNotify(convex, resolvedPaymentId);
             }
 
             if (resolvedStatus === "failed" || resolvedStatus === "void") {
@@ -151,9 +169,7 @@ export async function GET(request: NextRequest) {
         const paymentStatus = extractWhopPaymentStatus(payment);
 
         if (paymentStatus === "paid") {
-          await convex.mutation(api.payments.completeSubmissionPayment, {
-            paymentId: paymentIdForLookup,
-          });
+          await completePaymentAndNotify(convex, paymentIdForLookup);
         }
 
         if (paymentStatus === "failed" || paymentStatus === "void") {
