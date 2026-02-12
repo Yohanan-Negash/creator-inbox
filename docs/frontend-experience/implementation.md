@@ -23,6 +23,8 @@
   - request type rows, status toggle, delete confirmation, pagination
 - `components/experiences/admin/metrics-submissions-section.tsx`
   - KPI cards + submissions table
+  - cashout confirmation with fee breakdown (10% app fee, 90% creator payout)
+  - explicit note that payment processing fees are included in app fee (no extra deduction)
 - `components/experiences/admin/answer-submission-dialog.tsx`
   - read-only answered response viewer
 

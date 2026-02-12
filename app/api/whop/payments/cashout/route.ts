@@ -5,15 +5,12 @@ import { getSafeErrorMessage } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { getWhopSdk } from "@/lib/whop";
 import { getConvexServerClient } from "@/lib/convex-server";
+import { APP_FEE_PERCENT, CREATOR_PAYOUT_PERCENT, calculateCashoutBreakdown } from "@/lib/cashout";
 
 const cashoutSchema = z.object({
   experienceId: z.string().min(1),
   whopDevUserToken: z.string().optional(),
 });
-
-function roundUsd(value: number) {
-  return Math.round(value * 100) / 100;
-}
 
 function getPlatformCompanyId() {
   const companyId = process.env.WHOP_COMPANY_ID?.trim() ?? "";
@@ -69,7 +66,8 @@ export async function POST(request: NextRequest) {
       viewerUserId,
     });
 
-    const grossBalance = roundUsd(metrics.balanceAvailable ?? 0);
+    const cashoutBreakdown = calculateCashoutBreakdown(metrics.balanceAvailable ?? 0);
+    const grossBalance = cashoutBreakdown.grossAmountUsd;
     const minimumCashoutUsd = 5;
 
     if (grossBalance <= 0) {
@@ -93,8 +91,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const creatorAmountUsd = grossBalance;
-    const platformFeeUsd = 0;
+    const creatorAmountUsd = cashoutBreakdown.creatorAmountUsd;
+    const platformFeeUsd = cashoutBreakdown.appFeeUsd;
 
     if (creatorAmountUsd <= 0) {
       return NextResponse.json(
@@ -137,6 +135,9 @@ export async function POST(request: NextRequest) {
         grossAmountUsd: grossBalance,
         creatorAmountUsd,
         platformFeeUsd,
+        appFeePercent: APP_FEE_PERCENT,
+        creatorPayoutPercent: CREATOR_PAYOUT_PERCENT,
+        paymentFeesIncludedInAppFee: cashoutBreakdown.paymentFeesIncludedInAppFee,
       },
     });
 
@@ -158,6 +159,9 @@ export async function POST(request: NextRequest) {
       grossAmountUsd: grossBalance,
       creatorAmountUsd,
       platformFeeUsd,
+      appFeePercent: APP_FEE_PERCENT,
+      creatorPayoutPercent: CREATOR_PAYOUT_PERCENT,
+      paymentFeesIncludedInAppFee: cashoutBreakdown.paymentFeesIncludedInAppFee,
       transferId,
     });
 
@@ -167,6 +171,9 @@ export async function POST(request: NextRequest) {
         grossAmountUsd: grossBalance,
         creatorAmountUsd,
         platformFeeUsd,
+        appFeePercent: APP_FEE_PERCENT,
+        creatorPayoutPercent: CREATOR_PAYOUT_PERCENT,
+        paymentFeesIncludedInAppFee: cashoutBreakdown.paymentFeesIncludedInAppFee,
         transferId: transferId ?? null,
       },
       { status: 200 },

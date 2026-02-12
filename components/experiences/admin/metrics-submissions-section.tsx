@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, getStatusPillClass } from "@/components/experiences/shared/formatters";
+import { APP_FEE_PERCENT, CREATOR_PAYOUT_PERCENT, calculateCashoutBreakdown } from "@/lib/cashout";
 
 type Metrics = {
   totalSubmissions: number;
@@ -94,6 +95,7 @@ export function MetricsSubmissionsSection({
   onSetSubmissionsPage,
 }: MetricsSubmissionsSectionProps) {
   const balanceAvailable = metrics?.balanceAvailable ?? metrics?.moneyEarned ?? 0;
+  const cashoutBreakdown = calculateCashoutBreakdown(balanceAvailable);
 
   return (
     <section className="grid gap-4">
@@ -120,6 +122,10 @@ export function MetricsSubmissionsSection({
           <CardHeader>
             <CardDescription>Balance Available</CardDescription>
             <CardTitle className="text-primary">${balanceAvailable.toFixed(2)}</CardTitle>
+            <p className="text-xs text-zinc-600">
+              You receive ${cashoutBreakdown.creatorAmountUsd.toFixed(2)} after a {APP_FEE_PERCENT}% app
+              fee.
+            </p>
             <Button
               type="button"
               size="sm"
@@ -381,15 +387,39 @@ export function MetricsSubmissionsSection({
               <AlertDialogHeader>
                 <AlertDialogTitle>Confirm cash out?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  You are about to cash out ${balanceAvailable.toFixed(2)}. This transfers your
-                  available balance and cannot be undone.
+                  You are cashing out your available balance with a transparent payout breakdown.
                 </AlertDialogDescription>
               </AlertDialogHeader>
+              <div className="grid gap-2 border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
+                <div className="flex items-center justify-between">
+                  <span>Available balance</span>
+                  <span className="font-medium text-zinc-900">
+                    ${cashoutBreakdown.grossAmountUsd.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>App fee ({APP_FEE_PERCENT}%)</span>
+                  <span className="font-medium text-zinc-900">
+                    -${cashoutBreakdown.appFeeUsd.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-zinc-500">
+                  <span>Payment fees</span>
+                  <span>Included in app fee</span>
+                </div>
+                <div className="h-px bg-zinc-200" />
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-zinc-900">You receive ({CREATOR_PAYOUT_PERCENT}%)</span>
+                  <span className="font-semibold text-primary">
+                    ${cashoutBreakdown.creatorAmountUsd.toFixed(2)}
+                  </span>
+                </div>
+              </div>
               <AlertDialogFooter>
                 <AlertDialogCancel disabled={cashoutPending}>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={onConfirmCashout}
-                  disabled={cashoutPending || balanceAvailable <= 0}
+                  disabled={cashoutPending || cashoutBreakdown.creatorAmountUsd <= 0}
                 >
                   {cashoutPending ? (
                     <>

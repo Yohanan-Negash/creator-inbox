@@ -30,6 +30,14 @@
   - `moneyAvailable -amountUsd`
 - Updates linked `submissionPayments` status when a provider payment id is present.
 
+### Cashout Fee Split
+
+- Cashout transfer amount is computed in route-layer logic from admin metrics `balanceAvailable`.
+- Payout split is fixed at `90% creator / 10% app fee`.
+- The app fee is presented to creators as inclusive of Whop/payment processing infra fees.
+- `payments.getOrCreatePendingCashout` persists `grossAmountUsd`, `creatorAmountUsd`, and `platformFeeUsd` for auditability.
+- `payments.finalizeCashout` decrements `moneyEarned` by `grossAmountUsd` once per pending cashout completion.
+
 ### `createSubmission`
 
 - Validates minimum submission text length (`MIN_SUBMISSION_TEXT_LENGTH`).

@@ -551,6 +551,7 @@ export default function AdminPageClient({
       if (!response.ok) {
         throw new Error(payload.error || "Failed to cash out.");
       }
+      await refreshAdminData();
       setCashoutConfirmOpen(false);
     } catch (error) {
       setCashoutError(getErrorMessage(error, "Failed to cash out."));
