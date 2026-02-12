@@ -10,6 +10,7 @@ import {
   getWhopPaymentId,
 } from "@/lib/whop-payments";
 import { getWhopSdk } from "@/lib/whop";
+import { notifyAdminSubmissionCreated } from "@/lib/whop-notifications";
 
 function getWebhookKey() {
   return (process.env.WHOP_WEBHOOK_SECRET ?? "").trim();
@@ -109,7 +110,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (status === "paid") {
-      await convex.mutation(api.payments.completeSubmissionPayment, { paymentId });
+      const completion = await convex.mutation(api.payments.completeSubmissionPayment, {
+        paymentId,
+      });
+
+      if (completion.created) {
+        await notifyAdminSubmissionCreated({
+          experienceId: completion.experienceId,
+          creatorUserId: completion.creatorUserId,
+          requesterUserName: completion.requesterUserName,
+          requestTypeTitle: completion.requestTypeTitle,
+        });
+      }
+
       return NextResponse.json({ received: true, paymentId, status: "paid" }, { status: 200 });
     }
 

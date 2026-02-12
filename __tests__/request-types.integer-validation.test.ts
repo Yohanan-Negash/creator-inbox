@@ -15,7 +15,23 @@ describe("requestTypes integer validation", () => {
         price: 19.99,
         responseWindowHours: 24,
       }),
-    ).rejects.toThrowError("Price must be a positive whole number.");
+    ).rejects.toThrowError("Price must be a non-negative whole number.");
+  });
+
+  it("allows zero price for free request types", async () => {
+    const t = createConvexTest();
+
+    const requestType = await t.mutation(api.requestTypes.createRequestType, {
+      experienceId: "exp-int-free",
+      viewerUserId: "creator-int-free",
+      title: "Quick question",
+      description: "Ask for a short answer",
+      price: 0,
+      responseWindowHours: 24,
+    });
+
+    expect(requestType).not.toBeNull();
+    expect(requestType?.price).toBe(0);
   });
 
   it("rejects decimal response window on update", async () => {

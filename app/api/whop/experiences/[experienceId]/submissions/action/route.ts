@@ -5,6 +5,7 @@ import { getConvexServerClient } from "@/lib/convex-server";
 import { getSafeErrorMessage } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { getWhopSdk } from "@/lib/whop";
+import { notifyUserSubmissionAnswered } from "@/lib/whop-notifications";
 
 const actionSchema = z.discriminatedUnion("action", [
   z.object({
@@ -44,10 +45,21 @@ export async function POST(
     }
 
     if (body.data.action === "answer") {
-      await convex.mutation(api.submissions.answerSubmission, {
+      const answered = await convex.mutation(api.submissions.answerSubmission, {
         submissionId: body.data.submissionId as never,
         viewerUserId,
         responseText: body.data.responseText,
+      });
+
+      if (!answered) {
+        throw new Error("Submission was answered but result payload is missing.");
+      }
+
+      await notifyUserSubmissionAnswered({
+        experienceId: answered.experienceId,
+        requesterUserId: answered.userId,
+        creatorUserId: answered.creatorId,
+        requestTypeTitle: answered.requestTypeTitleSnapshot,
       });
     } else {
       await convex.mutation(api.submissions.deleteSubmissionForCreator, {

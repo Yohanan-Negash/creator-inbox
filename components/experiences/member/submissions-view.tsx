@@ -39,6 +39,7 @@ type SubmissionItem = {
 type SubmissionsViewProps = {
   username?: string;
   name?: string | null;
+  isLoading: boolean;
   submissions: SubmissionItem[] | undefined;
   pagedSubmissions: SubmissionItem[];
   selectedSubmissionId: Id<"submissions"> | null;
@@ -55,6 +56,7 @@ type SubmissionsViewProps = {
 export function SubmissionsView({
   username,
   name,
+  isLoading,
   submissions,
   pagedSubmissions,
   selectedSubmissionId,
@@ -68,6 +70,19 @@ export function SubmissionsView({
   onSetSubmissionsPage,
 }: SubmissionsViewProps) {
   const readSubmissionIdSet = useMemo(() => new Set(readSubmissionIds), [readSubmissionIds]);
+
+  if (isLoading || submissions === undefined) {
+    return (
+      <section className="grid gap-3">
+        <div className="flex min-h-[25vh] items-center justify-center p-6">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="size-6 animate-spin text-primary" />
+            <p className="text-sm text-zinc-500">Loading submissions...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="grid gap-3">
@@ -91,16 +106,7 @@ export function SubmissionsView({
         </CardContent>
       </Card>
 
-      {submissions === undefined ? (
-        <div className="flex min-h-[25vh] items-center justify-center p-6">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="size-6 animate-spin text-primary" />
-            <p className="text-sm text-zinc-500">Loading submissions...</p>
-          </div>
-        </div>
-      ) : null}
-
-      {submissions !== undefined && submissions.length === 0 ? (
+      {submissions.length === 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>No submissions yet</CardTitle>
@@ -111,7 +117,7 @@ export function SubmissionsView({
         </Card>
       ) : null}
 
-      {submissions && submissions.length > 0 ? (
+      {submissions.length > 0 ? (
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="grid gap-3 lg:hidden">
             {pagedSubmissions.map((submission) => {

@@ -122,10 +122,6 @@ export function MetricsSubmissionsSection({
           <CardHeader>
             <CardDescription>Balance Available</CardDescription>
             <CardTitle className="text-primary">${balanceAvailable.toFixed(2)}</CardTitle>
-            <p className="text-xs text-zinc-600">
-              You receive ${cashoutBreakdown.creatorAmountUsd.toFixed(2)} after a {APP_FEE_PERCENT}% app
-              fee.
-            </p>
             <Button
               type="button"
               size="sm"

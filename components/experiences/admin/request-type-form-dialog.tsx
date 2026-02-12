@@ -49,6 +49,7 @@ type RequestTypeFormDialogProps = {
   onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
   onCloseDialog: () => void;
   onGenerateWithAi: () => void;
+  onSetFreePrice: () => void;
   onFormChange: (next: RequestTypeFormValues) => void;
 };
 
@@ -66,6 +67,7 @@ export function RequestTypeFormDialog({
   onSubmit,
   onCloseDialog,
   onGenerateWithAi,
+  onSetFreePrice,
   onFormChange,
 }: RequestTypeFormDialogProps) {
   return (
@@ -158,7 +160,7 @@ export function RequestTypeFormDialog({
               <Input
                 id="request-type-price"
                 type="number"
-                min="1"
+                min="0"
                 step="1"
                 value={formValues.price}
                 onChange={(event) =>
@@ -168,9 +170,20 @@ export function RequestTypeFormDialog({
                   })
                 }
                 aria-invalid={Boolean(fieldErrors.price)}
-                placeholder="5"
+                placeholder="0 for free"
                 disabled={submitPending || generatePending}
               />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="justify-start"
+                onClick={onSetFreePrice}
+                disabled={submitPending || generatePending}
+              >
+                Make this free
+              </Button>
+              <p className="text-[11px] text-zinc-500">Set price to $0 so members can ask without payment.</p>
               {fieldErrors.price ? <p className="text-xs text-red-600">{fieldErrors.price}</p> : null}
             </div>
 

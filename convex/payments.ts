@@ -35,6 +35,7 @@ export const getRequestTypeQuote = query({
 
     return {
       requestTypeId: requestType._id,
+      creatorId: requestType.creatorId,
       title: requestType.title,
       price: requestType.price,
     };
@@ -129,10 +130,18 @@ export const completeSubmissionPayment = mutation({
     }
 
     if (paymentRow.submissionId) {
+      const existingSubmission = await ctx.db.get(paymentRow.submissionId);
+
       return {
         paymentId: paymentRow.paymentId,
         submissionId: paymentRow.submissionId,
         status: paymentRow.status,
+        created: false,
+        experienceId: paymentRow.experienceId,
+        creatorUserId: existingSubmission?.creatorId ?? "",
+        requesterUserId: paymentRow.viewerUserId,
+        requesterUserName: paymentRow.viewerUserName,
+        requestTypeTitle: existingSubmission?.requestTypeTitleSnapshot ?? "",
       };
     }
 
@@ -193,6 +202,12 @@ export const completeSubmissionPayment = mutation({
       paymentId: paymentRow.paymentId,
       submissionId,
       status: "paid" as const,
+      created: true,
+      experienceId: paymentRow.experienceId,
+      creatorUserId: requestType.creatorId,
+      requesterUserId: paymentRow.viewerUserId,
+      requesterUserName: paymentRow.viewerUserName,
+      requestTypeTitle: requestType.title,
     };
   },
 });

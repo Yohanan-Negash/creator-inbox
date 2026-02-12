@@ -3,7 +3,7 @@
 ## Member Components
 
 - `app/experiences/[experienceId]/experience-page-client.tsx`
-  - client-side interaction layer for submission flow, pagination, and checkout polling
+  - client-side interaction layer for submission flow, pagination, free-submit handling, and checkout polling
 - `components/experiences/member/member-header.tsx`
   - view toggle and admin navigation button
 - `components/experiences/member/request-types-view.tsx`
@@ -18,7 +18,7 @@
 - `app/experiences/[experienceId]/admin/admin-page-client.tsx`
   - client-side interaction layer for request-type CRUD, AI generation, and submission actions
 - `components/experiences/admin/request-type-form-dialog.tsx`
-  - create/edit dialog with AI generation action
+  - create/edit dialog with AI generation action and quick "Make this free" price helper
 - `components/experiences/admin/request-types-management.tsx`
   - request type rows, status toggle, delete confirmation, pagination
 - `components/experiences/admin/metrics-submissions-section.tsx`

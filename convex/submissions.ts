@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 
-export const MIN_SUBMISSION_TEXT_LENGTH = 8;
+export const MIN_SUBMISSION_TEXT_LENGTH = 5;
 
 export function ensureValidSubmissionText(submissionText: string) {
   if (submissionText.trim().length < MIN_SUBMISSION_TEXT_LENGTH) {

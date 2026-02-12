@@ -97,7 +97,7 @@ export async function POST(request: Request) {
 
     const generateInput = GenerateRequestTypesInputSchema.parse({
       experienceId: parsed.data.experienceId,
-      prompt: `${parsed.data.intent}. Generate one fresh request idea with clear value and a specific text-response deliverable.`,
+      prompt: `${parsed.data.intent}. Generate one fresh request idea with clear value and a specific text-response deliverable. Include a sensible price that can be free (0) or paid.`,
       creatorContext: contextFromExisting,
       targetAudience: "Fans or clients buying creator support and personalized outcomes.",
       count: 1,

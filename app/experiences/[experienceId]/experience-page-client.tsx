@@ -22,7 +22,7 @@ const submissionSchema = z.object({
   submissionText: z
     .string()
     .trim()
-    .min(8, "Please share a few details (at least 8 characters).")
+    .min(5, "Please share a few details (at least 5 characters).")
     .max(2000, "Submission must be at most 2000 characters."),
 });
 
@@ -239,6 +239,15 @@ export default function ExperiencePageClient({
         throw new Error(createPayload.error || "Failed to process payment.");
       }
 
+      if (createPayload.submissionCreated) {
+        setSubmitDialogOpen(false);
+        resetCheckoutState();
+        setSubmissionPending(false);
+        setActiveView("submissions");
+        await refreshMemberData();
+        return;
+      }
+
       if (!createPayload.checkoutConfigurationId) {
         throw new Error("Missing checkout details.");
       }
@@ -258,6 +267,32 @@ export default function ExperiencePageClient({
     setCheckoutSessionId(null);
     setCheckoutPaymentId(null);
     setCheckoutReturnUrl(null);
+  }
+
+  async function refreshMemberData() {
+    setMemberDataLoading(true);
+    try {
+      const url = new URL(
+        `/api/whop/experiences/${encodeURIComponent(experienceId)}/member-data`,
+        window.location.origin,
+      );
+      if (devUserToken) {
+        url.searchParams.set("whop-dev-user-token", devUserToken);
+      }
+      const refreshResponse = await fetch(url.toString());
+      const refreshPayload = (await refreshResponse.json()) as {
+        requestTypes?: MemberRequestType[];
+        submissions?: Array<MemberSubmission & { responseText?: string | null }>;
+      };
+      if (refreshResponse.ok) {
+        setRequestTypes(refreshPayload.requestTypes ?? []);
+        setSubmissions(normalizeSubmissions(refreshPayload.submissions));
+      }
+    } catch {
+      // no-op
+    } finally {
+      setMemberDataLoading(false);
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -293,29 +328,7 @@ export default function ExperiencePageClient({
           resetCheckoutState();
           setSubmissionPending(false);
           setActiveView("submissions");
-          setMemberDataLoading(true);
-          try {
-            const url = new URL(
-              `/api/whop/experiences/${encodeURIComponent(experienceId)}/member-data`,
-              window.location.origin,
-            );
-            if (devUserToken) {
-              url.searchParams.set("whop-dev-user-token", devUserToken);
-            }
-            const refreshResponse = await fetch(url.toString());
-            const refreshPayload = (await refreshResponse.json()) as {
-              requestTypes?: MemberRequestType[];
-              submissions?: Array<MemberSubmission & { responseText?: string | null }>;
-            };
-            if (refreshResponse.ok) {
-              setRequestTypes(refreshPayload.requestTypes ?? []);
-              setSubmissions(normalizeSubmissions(refreshPayload.submissions));
-            }
-          } catch {
-            // no-op
-          } finally {
-            setMemberDataLoading(false);
-          }
+          await refreshMemberData();
           return;
         }
 
@@ -414,13 +427,14 @@ export default function ExperiencePageClient({
         </div>
       ) : null}
 
-      {!loading && !data?.error && data?.access?.has_access && requestTypes !== undefined ? (
+      {!loading && !data?.error && !isRequestTypesLoading && data?.access?.has_access && requestTypes !== undefined ? (
         activeView === "request-types" ? (
           <RequestTypesView requestTypes={requestTypes} onOpenSubmitDialog={openSubmitDialog} />
         ) : (
           <SubmissionsView
             username={data.user?.username}
             name={data.user?.name}
+            isLoading={memberDataLoading}
             submissions={submissions}
             pagedSubmissions={pagedSubmissions}
             selectedSubmissionId={selectedSubmissionId}
