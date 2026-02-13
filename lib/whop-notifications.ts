@@ -12,16 +12,6 @@ type SendExperienceNotificationArgs = {
   iconUserId?: string;
 };
 
-type SendCompanyNotificationArgs = {
-  event: string;
-  companyId: string;
-  userIds?: string[];
-  title: string;
-  content: string;
-  restPath?: string;
-  iconUserId?: string;
-};
-
 type SubmissionCreatedAdminArgs = {
   experienceId: string;
   creatorUserId: string;
@@ -66,13 +56,9 @@ function getDefaultRestPath(experienceId: string) {
 
 function getWhopNotificationClient() {
   return getWhopSdk() as {
-    experiences?: {
-      retrieve?: (id: string) => Promise<unknown>;
-    };
     notifications?: {
       create?: (input: {
         experience_id?: string;
-        company_id?: string;
         user_ids?: string[];
         title: string;
         content: string;
@@ -152,62 +138,6 @@ export async function sendExperienceNotification(args: SendExperienceNotificatio
       event: "whop.notification.failed",
       notificationEvent: args.event,
       experienceId: args.experienceId,
-      recipientCount: recipients.length,
-      recipientUserIds: recipients,
-      errorMessage: getSafeErrorMessage(error),
-    });
-    return false;
-  }
-}
-
-export async function sendCompanyNotification(args: SendCompanyNotificationArgs) {
-  const recipients = sanitizeUserIds(args.userIds ?? []);
-  const whopSdk = getWhopNotificationClient();
-
-  if (!whopSdk.notifications?.create) {
-    logger.error("Whop notifications client is unavailable", {
-      event: "whop.notification.client_unavailable",
-      notificationEvent: args.event,
-      companyId: args.companyId,
-      recipientCount: recipients.length,
-    });
-    return false;
-  }
-
-  try {
-    const response = await whopSdk.notifications.create({
-      company_id: args.companyId,
-      user_ids: recipients.length > 0 ? recipients : undefined,
-      title: args.title,
-      content: args.content,
-      rest_path: args.restPath,
-      icon_user_id: args.iconUserId,
-    });
-
-    if (!parseNotificationQueued(response)) {
-      logger.error("Whop notification was not queued", {
-        event: "whop.notification.not_queued",
-        notificationEvent: args.event,
-        companyId: args.companyId,
-        recipientCount: recipients.length,
-      });
-      return false;
-    }
-
-    logger.info("Whop company notification queued", {
-      event: "whop.notification.queued",
-      notificationEvent: args.event,
-      companyId: args.companyId,
-      recipientCount: recipients.length,
-      recipientUserIds: recipients,
-    });
-
-    return true;
-  } catch (error) {
-    logger.error("Whop company notification send failed", {
-      event: "whop.notification.failed",
-      notificationEvent: args.event,
-      companyId: args.companyId,
       recipientCount: recipients.length,
       recipientUserIds: recipients,
       errorMessage: getSafeErrorMessage(error),
