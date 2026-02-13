@@ -69,6 +69,6 @@ export async function GET(request: NextRequest) {
       status: 500,
       errorMessage: getSafeErrorMessage(error),
     });
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Please try again later." }, { status: 500 });
   }
 }

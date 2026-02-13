@@ -68,10 +68,7 @@ const defaultFormValues: RequestTypeFormValues = {
 };
 
 function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
+  void error;
   return fallback;
 }
 
@@ -329,7 +326,7 @@ export default function AdminPageClient({
       }
 
       if (payload.rejected || payload.requestTypes.length === 0) {
-        throw new Error(payload.rejectionReason || "Could not generate request.");
+        throw new Error("Could not generate request.");
       }
 
       const suggestion = payload.requestTypes[0];

@@ -119,6 +119,6 @@ export async function POST(
       errorMessage: getSafeErrorMessage(error),
     });
 
-    return NextResponse.json({ error: getSafeErrorMessage(error) }, { status: 500 });
+    return NextResponse.json({ error: "Please try again later." }, { status: 500 });
   }
 }
