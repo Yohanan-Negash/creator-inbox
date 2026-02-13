@@ -134,6 +134,9 @@ export default function AdminPageClient({
     Id<"submissions"> | null
   >(null);
   const [submissionDeleteError, setSubmissionDeleteError] = useState<string | null>(null);
+  const [submissionDeleteConfirmId, setSubmissionDeleteConfirmId] = useState<
+    Id<"submissions"> | null
+  >(null);
   const [cashoutPending, setCashoutPending] = useState(false);
   const [cashoutError, setCashoutError] = useState<string | null>(null);
   const [cashoutConfirmOpen, setCashoutConfirmOpen] = useState(false);
@@ -510,7 +513,7 @@ export default function AdminPageClient({
   async function handleDeleteSubmission(submissionId: Id<"submissions">) {
     if (!viewerUserId) {
       setSubmissionDeleteError("Unable to verify your user account. Please refresh and try again.");
-      return;
+      return false;
     }
 
     setSubmissionDeleteError(null);
@@ -524,10 +527,23 @@ export default function AdminPageClient({
       });
 
       await refreshAdminData();
+      return true;
     } catch (error) {
       setSubmissionDeleteError(getErrorMessage(error, "Failed to delete submission."));
+      return false;
     } finally {
       setSubmissionDeletePendingId(null);
+    }
+  }
+
+  async function handleConfirmDeleteSubmission() {
+    if (!submissionDeleteConfirmId) {
+      return;
+    }
+
+    const deleted = await handleDeleteSubmission(submissionDeleteConfirmId);
+    if (deleted) {
+      setSubmissionDeleteConfirmId(null);
     }
   }
 
@@ -774,13 +790,15 @@ export default function AdminPageClient({
             totalSubmissionPages={totalSubmissionPages}
             onOpenAnswerDialog={openAnswerDialog}
             onRefundSubmission={handleRefundSubmission}
-            onDeleteSubmission={handleDeleteSubmission}
+            onSetSubmissionDeleteConfirmId={setSubmissionDeleteConfirmId}
+            onConfirmDeleteSubmission={handleConfirmDeleteSubmission}
             onConfirmCashout={handleCashout}
             cashoutConfirmOpen={cashoutConfirmOpen}
             onSetCashoutConfirmOpen={setCashoutConfirmOpen}
             cashoutPending={cashoutPending}
             refundPendingId={refundPendingId}
             deletePendingId={submissionDeletePendingId}
+            submissionDeleteConfirmId={submissionDeleteConfirmId}
             onSetSubmissionsPage={setSubmissionsPage}
           />
 

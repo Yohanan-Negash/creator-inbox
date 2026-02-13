@@ -66,13 +66,15 @@ type MetricsSubmissionsSectionProps = {
   totalSubmissionPages: number;
   onOpenAnswerDialog: (submissionId: Id<"submissions">) => void;
   onRefundSubmission: (submissionId: Id<"submissions">) => void;
-  onDeleteSubmission: (submissionId: Id<"submissions">) => void;
+  onSetSubmissionDeleteConfirmId: (submissionId: Id<"submissions"> | null) => void;
+  onConfirmDeleteSubmission: () => void;
   onConfirmCashout: () => void;
   cashoutConfirmOpen: boolean;
   onSetCashoutConfirmOpen: (open: boolean) => void;
   cashoutPending: boolean;
   refundPendingId: Id<"submissions"> | null;
   deletePendingId: Id<"submissions"> | null;
+  submissionDeleteConfirmId: Id<"submissions"> | null;
   onSetSubmissionsPage: (page: number) => void;
 };
 
@@ -85,13 +87,15 @@ export function MetricsSubmissionsSection({
   totalSubmissionPages,
   onOpenAnswerDialog,
   onRefundSubmission,
-  onDeleteSubmission,
+  onSetSubmissionDeleteConfirmId,
+  onConfirmDeleteSubmission,
   onConfirmCashout,
   cashoutConfirmOpen,
   onSetCashoutConfirmOpen,
   cashoutPending,
   refundPendingId,
   deletePendingId,
+  submissionDeleteConfirmId,
   onSetSubmissionsPage,
 }: MetricsSubmissionsSectionProps) {
   const balanceAvailable = metrics?.balanceAvailable ?? metrics?.moneyEarned ?? 0;
@@ -223,7 +227,7 @@ export function MetricsSubmissionsSection({
                           variant="outline"
                           size="sm"
                           disabled={deletePendingId === submission._id}
-                          onClick={() => onDeleteSubmission(submission._id)}
+                          onClick={() => onSetSubmissionDeleteConfirmId(submission._id)}
                         >
                           {deletePendingId === submission._id ? (
                             "Deleting..."
@@ -310,7 +314,7 @@ export function MetricsSubmissionsSection({
                               disabled={deletePendingId === submission._id}
                               onClick={(event) => {
                                 event.stopPropagation();
-                                onDeleteSubmission(submission._id);
+                                onSetSubmissionDeleteConfirmId(submission._id);
                               }}
                             >
                               {deletePendingId === submission._id ? (
@@ -425,6 +429,42 @@ export function MetricsSubmissionsSection({
                   ) : (
                     "Confirm cash out"
                   )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog
+            open={Boolean(submissionDeleteConfirmId)}
+            onOpenChange={(open) => {
+              if (!open) {
+                onSetSubmissionDeleteConfirmId(null);
+              }
+            }}
+          >
+            <AlertDialogContent size="sm">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete submission?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This permanently removes the submission from both your admin dashboard and the
+                  member&apos;s submissions list.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel
+                  disabled={
+                    Boolean(submissionDeleteConfirmId) && deletePendingId === submissionDeleteConfirmId
+                  }
+                >
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={onConfirmDeleteSubmission}
+                  disabled={
+                    !submissionDeleteConfirmId || deletePendingId === submissionDeleteConfirmId
+                  }
+                >
+                  {deletePendingId === submissionDeleteConfirmId ? "Deleting..." : "Confirm delete"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
