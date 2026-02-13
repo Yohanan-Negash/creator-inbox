@@ -184,7 +184,7 @@ export default function AdminPageClient({
     return requestTypes.slice(start, start + pageSize);
   }, [currentPage, requestTypes]);
 
-  const submissionsPageSize = 8;
+  const submissionsPageSize = 6;
   const totalSubmissionPages = useMemo(() => {
     const count = dashboardSubmissions?.length ?? 0;
     return Math.max(1, Math.ceil(count / submissionsPageSize));
