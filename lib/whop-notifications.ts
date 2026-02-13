@@ -95,27 +95,6 @@ function parseNotificationQueued(response: unknown) {
   return (response as { success?: boolean }).success === true;
 }
 
-async function resolveCompanyIdForExperience(experienceId: string) {
-  const whopSdk = getWhopNotificationClient();
-  if (!whopSdk.experiences?.retrieve) {
-    return null;
-  }
-
-  try {
-    const experience = await whopSdk.experiences.retrieve(experienceId);
-    const companyId =
-      (experience as { company?: { id?: string } }).company?.id?.trim() ?? "";
-    return companyId || null;
-  } catch (error) {
-    logger.error("Failed to resolve experience company for notification", {
-      event: "whop.notification.company_resolution_failed",
-      experienceId,
-      errorMessage: getSafeErrorMessage(error),
-    });
-    return null;
-  }
-}
-
 export async function sendExperienceNotification(args: SendExperienceNotificationArgs) {
   const recipients = sanitizeUserIds(args.userIds ?? []);
   if (recipients.length === 0) {
@@ -250,23 +229,10 @@ export async function notifyAdminSubmissionCreated(args: SubmissionCreatedAdminA
     creatorRecipientUserIds: creatorRecipients,
   });
 
-  const companyId = await resolveCompanyIdForExperience(args.experienceId);
-  if (companyId) {
-    return sendCompanyNotification({
-      event: "submission.created.admin",
-      companyId,
-      userIds: creatorRecipients,
-      title: "New request",
-      content: `${requesterName} submitted ${requestType}.`,
-      restPath: `${getDefaultRestPath(args.experienceId)}/admin`,
-      iconUserId: args.creatorUserId,
-    });
-  }
-
   return sendExperienceNotification({
     event: "submission.created.admin",
     experienceId: args.experienceId,
-    userIds: [args.creatorUserId],
+    userIds: creatorRecipients,
     title: "New request",
     content: `${requesterName} submitted ${requestType}.`,
     restPath: `${getDefaultRestPath(args.experienceId)}/admin`,
