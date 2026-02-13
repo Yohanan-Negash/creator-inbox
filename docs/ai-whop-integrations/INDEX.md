@@ -33,6 +33,7 @@ related: [architecture, frontend-experience]
 | Diagnose unauthorized responses | [troubleshooting.md](./troubleshooting.md) |
 | Change AI request payload schema | [implementation.md](./implementation.md) |
 | Add structured logs for integrations | [implementation.md](./implementation.md) |
+| Enforce user-safe error responses | [implementation.md](./implementation.md) |
 
 ## Key Implementation Files
 

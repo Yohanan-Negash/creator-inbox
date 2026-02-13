@@ -17,3 +17,9 @@
 - **Symptom**: previously read answered submissions show as unread after refresh.
 - **Cause**: localStorage key changed (experience/user mismatch) or parse failure.
 - **Fix**: preserve storage key shape `submission-reads:<experienceId>:<viewerUserId>` and maintain JSON array parsing guards.
+
+## Error banners show technical/internal messages
+
+- **Symptom**: users see stack-like or provider-specific text in admin/member error states.
+- **Cause**: UI reads raw thrown errors instead of showing fallback copy.
+- **Fix**: always render simple user-facing text (`Please try again.` or `Please try again later.`) in UI state handlers, and keep technical detail in server logs only.

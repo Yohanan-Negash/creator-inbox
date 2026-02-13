@@ -78,5 +78,5 @@ Defines the unit test strategy with `vitest` and `convex-test`, test layout unde
 ### Operations + Release (4 files)
 Describes branch workflow (`dev` -> `main`), deployment checklist, and interim manual gates while branch rules are unavailable.
 
-### SOP (1 file index)
+### SOP (2 files)
 Template and standards for adding repeatable operational runbooks as the project evolves.

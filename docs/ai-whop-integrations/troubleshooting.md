@@ -23,3 +23,9 @@
 - **Symptom**: route returns 400 with `fieldErrors`.
 - **Cause**: request does not conform to route zod schema.
 - **Fix**: update request body to match `GenerateRequestTypesRouteInputSchema` shape.
+
+## UI shows technical error text from integration routes
+
+- **Symptom**: users see internal provider/runtime language in error banners or dialogs.
+- **Cause**: route returns raw exception messages or client uses thrown `Error.message` directly.
+- **Fix**: return generic retry-oriented copy for `500` responses (for example, `Please try again later.`) and rely on structured server logs for technical diagnostics.

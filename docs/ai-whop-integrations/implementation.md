@@ -89,3 +89,10 @@
 - Keep route-level validation strict to prevent malformed prompts and bad downstream calls.
 - Preserve 401/403 distinctions for easier auth debugging.
 - Prefer adding new fields to zod schemas and parse outputs before use.
+
+## Error Response and Logging Policy
+
+- For unexpected server failures (`5xx`), return user-safe copy such as `Please try again later.`.
+- Do not return raw exception text from route handlers to clients.
+- Always log technical details with `logger.error` and structured metadata (`route`, `method`, `event`, `status`, and `errorMessage`).
+- Keep actionable but non-sensitive client copy for expected client/auth failures (`400`, `401`, `403`).

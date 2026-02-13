@@ -28,7 +28,7 @@ Create an SOP when you encounter a process that:
 
 | SOP | Description | When to Use |
 |-----|-------------|-------------|
-| [None yet] | Run `/check-docs` after completing multi-step processes | To generate SOP candidates |
+| [user-facing-error-sanitization-audit.md](./user-facing-error-sanitization-audit.md) | Ensure UI errors stay simple while server logs remain technical | When changing API/UI error handling |
 
 ## Creating New SOPs
 
