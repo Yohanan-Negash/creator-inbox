@@ -174,6 +174,10 @@ export function MetricsSubmissionsSection({
                   const canOpenResponse =
                     submission.status === "answered" ||
                     (submission.status === "pending" && submission.isWithinResponseWindow);
+                  const canRefundSubmission =
+                    submission.status === "pending" &&
+                    !submission.isWithinResponseWindow &&
+                    submission.amountUsd > 1;
 
                   return (
                     <div key={String(submission._id)} className="grid gap-2 border border-zinc-200 p-3">
@@ -207,7 +211,7 @@ export function MetricsSubmissionsSection({
                       </button>
 
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        {submission.status === "pending" && !submission.isWithinResponseWindow ? (
+                        {canRefundSubmission ? (
                           <Button
                             type="button"
                             variant="outline"
@@ -262,6 +266,10 @@ export function MetricsSubmissionsSection({
                       const canOpenResponse =
                         submission.status === "answered" ||
                         (submission.status === "pending" && submission.isWithinResponseWindow);
+                      const canRefundSubmission =
+                        submission.status === "pending" &&
+                        !submission.isWithinResponseWindow &&
+                        submission.amountUsd > 1;
                       return (
                         <TableRow
                           key={String(submission._id)}
@@ -284,7 +292,7 @@ export function MetricsSubmissionsSection({
                           </TableCell>
                           <TableCell>{formatDateTime(submission.createdAt)}</TableCell>
                           <TableCell>
-                            {submission.status === "pending" && !submission.isWithinResponseWindow ? (
+                            {canRefundSubmission ? (
                               <div className="flex items-center gap-2">
                                 <span className="text-red-600">Expired window</span>
                                 <Button
