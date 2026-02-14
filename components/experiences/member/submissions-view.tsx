@@ -46,6 +46,7 @@ type SubmissionsViewProps = {
   unreadAnsweredCount: number;
   submissionsPage: number;
   submissionsPagePending: boolean;
+  submissionsPageError: string | null;
   hasPreviousSubmissionsPage: boolean;
   hasNextSubmissionsPage: boolean;
   onOpenSubmissionDetails: (submissionId: Id<"submissions">) => void;
@@ -64,6 +65,7 @@ export function SubmissionsView({
   unreadAnsweredCount,
   submissionsPage,
   submissionsPagePending,
+  submissionsPageError,
   hasPreviousSubmissionsPage,
   hasNextSubmissionsPage,
   onOpenSubmissionDetails,
@@ -288,6 +290,10 @@ export function SubmissionsView({
                 </PaginationItem>
               </PaginationContent>
             </Pagination>
+          ) : null}
+
+          {submissionsPageError ? (
+            <p className="text-xs text-red-600 lg:col-span-2">{submissionsPageError}</p>
           ) : null}
         </div>
       ) : null}

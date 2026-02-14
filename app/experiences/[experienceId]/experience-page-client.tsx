@@ -74,6 +74,7 @@ export default function ExperiencePageClient({
   const [checkoutReturnUrl, setCheckoutReturnUrl] = useState<string | null>(null);
   const [submissionsPage, setSubmissionsPage] = useState(1);
   const [submissionsPagePending, setSubmissionsPagePending] = useState(false);
+  const [submissionsPageError, setSubmissionsPageError] = useState<string | null>(null);
   const [submissionsCursor, setSubmissionsCursor] = useState<string | null>(null);
   const [submissionsNextCursor, setSubmissionsNextCursor] = useState<string | null>(() =>
     initialData.access?.has_access && initialData.submissionsIsDone !== true
@@ -124,6 +125,7 @@ export default function ExperiencePageClient({
       setSubmissionsPage(1);
       setSubmissionsCursor(null);
       setSubmissionsCursorHistory([]);
+      setSubmissionsPageError(null);
       setSubmissionsNextCursor(
         initialData.submissionsIsDone === true ? null : (initialData.submissionsContinueCursor ?? null),
       );
@@ -135,6 +137,7 @@ export default function ExperiencePageClient({
     setSubmissionsPage(1);
     setSubmissionsCursor(null);
     setSubmissionsCursorHistory([]);
+    setSubmissionsPageError(null);
     setSubmissionsNextCursor(null);
   }, [initialData]);
 
@@ -293,6 +296,7 @@ export default function ExperiencePageClient({
         setSubmissionsPage(1);
         setSubmissionsCursor(null);
         setSubmissionsCursorHistory([]);
+        setSubmissionsPageError(null);
         setSubmissionsNextCursor(
           refreshPayload.submissionsIsDone === true ? null : (refreshPayload.submissionsContinueCursor ?? null),
         );
@@ -348,6 +352,7 @@ export default function ExperiencePageClient({
     }
 
     setSubmissionsPagePending(true);
+    setSubmissionsPageError(null);
     try {
       const payload = await fetchMemberSubmissionsPage(submissionsNextCursor);
       setSubmissions(payload.submissions);
@@ -355,6 +360,8 @@ export default function ExperiencePageClient({
       setSubmissionsCursor(submissionsNextCursor);
       setSubmissionsNextCursor(payload.submissionsContinueCursor);
       setSubmissionsPage((page) => page + 1);
+    } catch {
+      setSubmissionsPageError("Failed to load submissions.");
     } finally {
       setSubmissionsPagePending(false);
     }
@@ -373,6 +380,7 @@ export default function ExperiencePageClient({
     const previousCursor = submissionsCursorHistory[submissionsCursorHistory.length - 1] ?? null;
 
     setSubmissionsPagePending(true);
+    setSubmissionsPageError(null);
     try {
       const payload = await fetchMemberSubmissionsPage(previousCursor);
       setSubmissions(payload.submissions);
@@ -380,6 +388,8 @@ export default function ExperiencePageClient({
       setSubmissionsCursorHistory((history) => history.slice(0, -1));
       setSubmissionsNextCursor(payload.submissionsContinueCursor);
       setSubmissionsPage((page) => Math.max(1, page - 1));
+    } catch {
+      setSubmissionsPageError("Failed to load submissions.");
     } finally {
       setSubmissionsPagePending(false);
     }
@@ -532,6 +542,7 @@ export default function ExperiencePageClient({
             unreadAnsweredCount={unreadAnsweredCount}
             submissionsPage={submissionsPage}
             submissionsPagePending={submissionsPagePending}
+            submissionsPageError={submissionsPageError}
             hasPreviousSubmissionsPage={hasPreviousSubmissionsPage}
             hasNextSubmissionsPage={hasNextSubmissionsPage}
             onOpenSubmissionDetails={openSubmissionDetails}
