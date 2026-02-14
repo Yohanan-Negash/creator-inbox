@@ -1,0 +1,2 @@
+export const ADMIN_SUBMISSIONS_PAGE_SIZE = 6;
+export const MEMBER_SUBMISSIONS_PAGE_SIZE = 6;

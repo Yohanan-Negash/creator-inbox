@@ -3,6 +3,7 @@ import "server-only";
 import { api } from "@/convex/_generated/api";
 import { getConvexServerClient } from "@/lib/convex-server";
 import { getSafeErrorMessage } from "@/lib/errors";
+import { ADMIN_SUBMISSIONS_PAGE_SIZE, MEMBER_SUBMISSIONS_PAGE_SIZE } from "@/lib/experiences/constants";
 import { logger } from "@/lib/logger";
 import type { AdminBootstrapData, MemberBootstrapData } from "@/lib/types/experiences/bootstrap";
 import { getWhopSdk } from "@/lib/whop";
@@ -84,17 +85,23 @@ export async function getMemberBootstrapData({
       access,
       requestTypes: [],
       submissions: [],
+      submissionsContinueCursor: null,
+      submissionsIsDone: true,
     };
   }
 
   let requestTypes;
-  let submissions;
+  let submissionsPage;
   try {
-    [requestTypes, submissions] = await Promise.all([
+    [requestTypes, submissionsPage] = await Promise.all([
       convex.query(api.requestTypes.listActiveByExperience, { experienceId }),
-      convex.query(api.submissions.listVisibleForUser, {
+      convex.query(api.submissions.listVisibleForUserPaginated, {
         experienceId,
         viewerUserId,
+        paginationOpts: {
+          numItems: MEMBER_SUBMISSIONS_PAGE_SIZE,
+          cursor: null,
+        },
       }),
     ]);
   } catch (error) {
@@ -111,7 +118,9 @@ export async function getMemberBootstrapData({
     user,
     access,
     requestTypes,
-    submissions,
+    submissions: submissionsPage.page,
+    submissionsContinueCursor: submissionsPage.isDone ? null : submissionsPage.continueCursor,
+    submissionsIsDone: submissionsPage.isDone,
   };
 }
 
@@ -186,22 +195,28 @@ export async function getAdminBootstrapData({
       access,
       requestTypes: [],
       dashboardSubmissions: [],
+      dashboardSubmissionsContinueCursor: null,
+      dashboardSubmissionsIsDone: true,
       metrics: null,
     };
   }
 
   let requestTypes;
-  let dashboardSubmissions;
+  let dashboardSubmissionsPage;
   let metrics;
   try {
-    [requestTypes, dashboardSubmissions, metrics] = await Promise.all([
+    [requestTypes, dashboardSubmissionsPage, metrics] = await Promise.all([
       convex.query(api.requestTypes.listByExperienceCreator, {
         experienceId,
         viewerUserId,
       }),
-      convex.query(api.submissions.listForAdminDashboard, {
+      convex.query(api.submissions.listForAdminDashboardPaginated, {
         experienceId,
         viewerUserId,
+        paginationOpts: {
+          numItems: ADMIN_SUBMISSIONS_PAGE_SIZE,
+          cursor: null,
+        },
       }),
       convex.query(api.submissions.getAdminMetrics, {
         experienceId,
@@ -222,7 +237,11 @@ export async function getAdminBootstrapData({
     user,
     access,
     requestTypes,
-    dashboardSubmissions,
+    dashboardSubmissions: dashboardSubmissionsPage.page,
+    dashboardSubmissionsContinueCursor: dashboardSubmissionsPage.isDone
+      ? null
+      : dashboardSubmissionsPage.continueCursor,
+    dashboardSubmissionsIsDone: dashboardSubmissionsPage.isDone,
     metrics,
   };
 }

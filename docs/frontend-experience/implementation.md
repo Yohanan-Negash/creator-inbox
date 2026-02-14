@@ -47,7 +47,15 @@
 - Member and admin route pages load in a single bootstrap fetch each:
   - first render calls shared server loaders in `lib/experiences/bootstrap-data.ts`
   - route handlers reuse the same loader functions for client-side refreshes
-  - both payloads include `user` + `access` plus page data to avoid client-side waterfall fetches.
+  - bootstrap payloads include `user` + `access` plus first-page data.
+- Admin submissions pagination is server-driven:
+  - first page loads from `admin-data` bootstrap payload
+  - next/previous pages load via `/api/whop/experiences/[experienceId]/admin-submissions`
+  - cursor state is owned in `admin-page-client.tsx` and rendered by `metrics-submissions-section.tsx`
+- Member submissions pagination is server-driven:
+  - first page loads from `member-data` bootstrap payload
+  - next/previous pages load via `/api/whop/experiences/[experienceId]/member-submissions`
+  - cursor state is owned in `experience-page-client.tsx` and rendered by `submissions-view.tsx`
 - Client page components should continue owning:
   - orchestration of selected IDs, pages, dialog open states, and mutation-side refreshes
 - Feature components should remain presentational-first with explicit props.

@@ -58,6 +58,18 @@
   - `moneyEarned +amountUsd`
   - `moneyAvailable -amountUsd`
 
+### `listForAdminDashboardPaginated`
+
+- Reads submissions via indexed pagination on `creatorId + experienceId + createdAt`.
+- Returns cursor metadata (`continueCursor`, `isDone`) for server-side page navigation.
+- Hydrates request type labels in-page using unique request type ids to avoid per-row (`N+1`) fetches.
+
+### `listVisibleForUserPaginated`
+
+- Reads member-visible submissions via indexed pagination on `experienceId + userId + createdAt`.
+- Returns cursor metadata (`continueCursor`, `isDone`) for member submissions page navigation.
+- Hydrates request type labels in-page using unique request type ids to avoid per-row (`N+1`) fetches.
+
 ## Projection Maintenance
 
 ### `applyCreatorMetricsDelta`

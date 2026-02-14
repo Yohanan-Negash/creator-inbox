@@ -7,6 +7,8 @@ export type MemberBootstrapData = {
   access?: WhopResponse["access"];
   requestTypes?: MemberRequestType[];
   submissions?: Array<MemberSubmission & { responseText?: string | null }>;
+  submissionsContinueCursor?: string | null;
+  submissionsIsDone?: boolean;
   error?: string;
 };
 
@@ -15,6 +17,8 @@ export type AdminBootstrapData = {
   access?: WhopResponse["access"];
   requestTypes?: AdminRequestType[];
   dashboardSubmissions?: Array<AdminSubmission & { responseText?: string | null }>;
+  dashboardSubmissionsContinueCursor?: string | null;
+  dashboardSubmissionsIsDone?: boolean;
   metrics?: AdminMetrics | null;
   error?: string;
 };
