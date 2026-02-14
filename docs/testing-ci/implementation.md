@@ -16,14 +16,25 @@
 
 ## Existing Test Files
 
-- `__tests__/submissions.create-and-metrics.test.ts`
-  - submission creation success + validation rejection
-- `__tests__/submissions.answer-and-metrics.test.ts`
-  - answer success + expired-window rejection
-- `__tests__/submissions.get-admin-metrics.test.ts`
-  - projection-backed metric read assertions
-- `__tests__/submissions.backfill-creator-metrics.test.ts`
-  - full rebuild of `creatorMetrics` from seeded submissions
+- Convex domain + projection tests
+  - `__tests__/submissions.create-and-metrics.test.ts`
+  - `__tests__/submissions.answer-and-metrics.test.ts`
+  - `__tests__/submissions.delete-metrics.test.ts`
+  - `__tests__/submissions.get-admin-metrics.test.ts`
+  - `__tests__/submissions.backfill-creator-metrics.test.ts`
+  - `__tests__/submissions.admin-dashboard-pagination.test.ts`
+  - `__tests__/submissions.member-pagination.test.ts`
+  - `__tests__/payments.cashout.test.ts`
+  - `__tests__/cashout-fees.test.ts`
+- HTTP route behavior tests (mocked integrations)
+  - `__tests__/submissions.action-route.test.ts`
+  - `__tests__/payments.create-submission-payment-route.test.ts`
+  - `__tests__/payments.submission-status-route.test.ts`
+  - `__tests__/payments.webhook-route.test.ts`
+  - `__tests__/payments.refund-submission-route.test.ts`
+- Validation/schema tests
+  - `__tests__/request-types.integer-validation.test.ts`
+  - `__tests__/inference.schemas.test.ts`
 
 ## Commands
 

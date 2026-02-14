@@ -4,7 +4,6 @@ import {
   Pagination,
   PaginationContent,
   PaginationItem,
-  PaginationLink,
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
@@ -41,16 +40,17 @@ type SubmissionsViewProps = {
   name?: string | null;
   isLoading: boolean;
   submissions: SubmissionItem[] | undefined;
-  pagedSubmissions: SubmissionItem[];
   selectedSubmissionId: Id<"submissions"> | null;
   selectedSubmission: SubmissionItem | null;
   readSubmissionIds: string[];
   unreadAnsweredCount: number;
   submissionsPage: number;
-  totalSubmissionPages: number;
-  submissionsPageSize: number;
+  submissionsPagePending: boolean;
+  hasPreviousSubmissionsPage: boolean;
+  hasNextSubmissionsPage: boolean;
   onOpenSubmissionDetails: (submissionId: Id<"submissions">) => void;
-  onSetSubmissionsPage: (next: number) => void;
+  onGoToPreviousSubmissionsPage: () => void;
+  onGoToNextSubmissionsPage: () => void;
 };
 
 export function SubmissionsView({
@@ -58,16 +58,17 @@ export function SubmissionsView({
   name,
   isLoading,
   submissions,
-  pagedSubmissions,
   selectedSubmissionId,
   selectedSubmission,
   readSubmissionIds,
   unreadAnsweredCount,
   submissionsPage,
-  totalSubmissionPages,
-  submissionsPageSize,
+  submissionsPagePending,
+  hasPreviousSubmissionsPage,
+  hasNextSubmissionsPage,
   onOpenSubmissionDetails,
-  onSetSubmissionsPage,
+  onGoToPreviousSubmissionsPage,
+  onGoToNextSubmissionsPage,
 }: SubmissionsViewProps) {
   const readSubmissionIdSet = useMemo(() => new Set(readSubmissionIds), [readSubmissionIds]);
 
@@ -97,10 +98,10 @@ export function SubmissionsView({
         <CardContent>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="rounded-none border border-zinc-200 px-2 py-1 text-zinc-600">
-              {submissions?.length ?? 0} total
+              {submissions?.length ?? 0} on this page
             </span>
             <span className="rounded-none border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">
-              {unreadAnsweredCount} unread responses
+              {unreadAnsweredCount} unread on this page
             </span>
           </div>
         </CardContent>
@@ -120,7 +121,7 @@ export function SubmissionsView({
       {submissions.length > 0 ? (
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="grid gap-3 lg:hidden">
-            {pagedSubmissions.map((submission) => {
+            {submissions.map((submission) => {
               const rowId = String(submission._id);
               const isUnread =
                 submission.status === "answered" &&
@@ -171,7 +172,7 @@ export function SubmissionsView({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pagedSubmissions.map((submission) => {
+                  {submissions.map((submission) => {
                     const rowId = String(submission._id);
                     const isUnread =
                       submission.status === "answered" &&
@@ -249,7 +250,7 @@ export function SubmissionsView({
             </CardContent>
           </Card>
 
-          {submissions.length > submissionsPageSize ? (
+          {(hasPreviousSubmissionsPage || hasNextSubmissionsPage) ? (
             <Pagination className="lg:col-span-2">
               <PaginationContent className="flex-wrap justify-center">
                 <PaginationItem>
@@ -257,37 +258,31 @@ export function SubmissionsView({
                     href="#"
                     onClick={(event) => {
                       event.preventDefault();
-                      onSetSubmissionsPage(Math.max(1, submissionsPage - 1));
+                      onGoToPreviousSubmissionsPage();
                     }}
-                    className={submissionsPage <= 1 ? "pointer-events-none opacity-50" : ""}
+                    className={
+                      !hasPreviousSubmissionsPage || submissionsPagePending
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
                   />
                 </PaginationItem>
-                {Array.from({ length: totalSubmissionPages }, (_, index) => {
-                  const pageNumber = index + 1;
-                  return (
-                    <PaginationItem key={pageNumber}>
-                      <PaginationLink
-                        href="#"
-                        isActive={pageNumber === submissionsPage}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          onSetSubmissionsPage(pageNumber);
-                        }}
-                      >
-                        {pageNumber}
-                      </PaginationLink>
-                    </PaginationItem>
-                  );
-                })}
+                <PaginationItem>
+                  <span className="px-3 py-2 text-xs text-zinc-500">
+                    {submissionsPagePending ? "Loading page..." : `Page ${submissionsPage}`}
+                  </span>
+                </PaginationItem>
                 <PaginationItem>
                   <PaginationNext
                     href="#"
                     onClick={(event) => {
                       event.preventDefault();
-                      onSetSubmissionsPage(Math.min(totalSubmissionPages, submissionsPage + 1));
+                      onGoToNextSubmissionsPage();
                     }}
                     className={
-                      submissionsPage >= totalSubmissionPages ? "pointer-events-none opacity-50" : ""
+                      !hasNextSubmissionsPage || submissionsPagePending
+                        ? "pointer-events-none opacity-50"
+                        : ""
                     }
                   />
                 </PaginationItem>

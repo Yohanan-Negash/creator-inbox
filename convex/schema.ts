@@ -54,8 +54,10 @@ export default defineSchema({
     answeredAt: v.optional(v.number()),
   })
     .index("by_creator_status", ["creatorId", "status"])
+    .index("by_creator_experience_created_at", ["creatorId", "experienceId", "createdAt"])
     .index("by_experience_status", ["experienceId", "status"])
     .index("by_experience_user", ["experienceId", "userId"])
+    .index("by_experience_user_created_at", ["experienceId", "userId", "createdAt"])
     .index("by_user", ["userId"])
     .index("by_request_type", ["requestTypeId"]),
   submissionPayments: defineTable({

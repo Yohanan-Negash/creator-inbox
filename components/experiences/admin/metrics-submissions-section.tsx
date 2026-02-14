@@ -21,7 +21,6 @@ import {
   Pagination,
   PaginationContent,
   PaginationItem,
-  PaginationLink,
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
@@ -60,10 +59,10 @@ type DashboardSubmission = {
 type MetricsSubmissionsSectionProps = {
   metrics: Metrics | undefined;
   dashboardSubmissions: DashboardSubmission[] | undefined;
-  pagedSubmissions: DashboardSubmission[];
-  submissionsPageSize: number;
   submissionsPage: number;
-  totalSubmissionPages: number;
+  submissionsPagePending: boolean;
+  hasPreviousSubmissionsPage: boolean;
+  hasNextSubmissionsPage: boolean;
   onOpenAnswerDialog: (submissionId: Id<"submissions">) => void;
   onRefundSubmission: (submissionId: Id<"submissions">) => void;
   onSetSubmissionDeleteConfirmId: (submissionId: Id<"submissions"> | null) => void;
@@ -75,16 +74,17 @@ type MetricsSubmissionsSectionProps = {
   refundPendingId: Id<"submissions"> | null;
   deletePendingId: Id<"submissions"> | null;
   submissionDeleteConfirmId: Id<"submissions"> | null;
-  onSetSubmissionsPage: (page: number) => void;
+  onGoToPreviousSubmissionsPage: () => void;
+  onGoToNextSubmissionsPage: () => void;
 };
 
 export function MetricsSubmissionsSection({
   metrics,
   dashboardSubmissions,
-  pagedSubmissions,
-  submissionsPageSize,
   submissionsPage,
-  totalSubmissionPages,
+  submissionsPagePending,
+  hasPreviousSubmissionsPage,
+  hasNextSubmissionsPage,
   onOpenAnswerDialog,
   onRefundSubmission,
   onSetSubmissionDeleteConfirmId,
@@ -96,7 +96,8 @@ export function MetricsSubmissionsSection({
   refundPendingId,
   deletePendingId,
   submissionDeleteConfirmId,
-  onSetSubmissionsPage,
+  onGoToPreviousSubmissionsPage,
+  onGoToNextSubmissionsPage,
 }: MetricsSubmissionsSectionProps) {
   const balanceAvailable = metrics?.balanceAvailable ?? metrics?.moneyEarned ?? 0;
   const cashoutBreakdown = calculateCashoutBreakdown(balanceAvailable);
@@ -167,10 +168,10 @@ export function MetricsSubmissionsSection({
             <p className="text-xs text-zinc-500">No submissions yet.</p>
           ) : null}
 
-          {pagedSubmissions.length > 0 ? (
+          {dashboardSubmissions && dashboardSubmissions.length > 0 ? (
             <>
               <div className="grid gap-2 md:hidden">
-                {pagedSubmissions.map((submission) => {
+                {dashboardSubmissions.map((submission) => {
                   const canOpenResponse =
                     submission.status === "answered" ||
                     (submission.status === "pending" && submission.isWithinResponseWindow);
@@ -262,7 +263,7 @@ export function MetricsSubmissionsSection({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pagedSubmissions.map((submission) => {
+                    {dashboardSubmissions.map((submission) => {
                       const canOpenResponse =
                         submission.status === "answered" ||
                         (submission.status === "pending" && submission.isWithinResponseWindow);
@@ -344,7 +345,7 @@ export function MetricsSubmissionsSection({
             </>
           ) : null}
 
-          {dashboardSubmissions && dashboardSubmissions.length > submissionsPageSize ? (
+          {dashboardSubmissions !== undefined && (hasPreviousSubmissionsPage || hasNextSubmissionsPage) ? (
             <Pagination>
               <PaginationContent className="flex-wrap justify-center">
                 <PaginationItem>
@@ -352,37 +353,31 @@ export function MetricsSubmissionsSection({
                     href="#"
                     onClick={(event) => {
                       event.preventDefault();
-                      onSetSubmissionsPage(Math.max(1, submissionsPage - 1));
+                      onGoToPreviousSubmissionsPage();
                     }}
-                    className={submissionsPage <= 1 ? "pointer-events-none opacity-50" : ""}
+                    className={
+                      !hasPreviousSubmissionsPage || submissionsPagePending
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
                   />
                 </PaginationItem>
-                {Array.from({ length: totalSubmissionPages }, (_, index) => {
-                  const pageNumber = index + 1;
-                  return (
-                    <PaginationItem key={pageNumber}>
-                      <PaginationLink
-                        href="#"
-                        isActive={pageNumber === submissionsPage}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          onSetSubmissionsPage(pageNumber);
-                        }}
-                      >
-                        {pageNumber}
-                      </PaginationLink>
-                    </PaginationItem>
-                  );
-                })}
+                <PaginationItem>
+                  <span className="px-3 py-2 text-xs text-zinc-500">
+                    {submissionsPagePending ? "Loading page..." : `Page ${submissionsPage}`}
+                  </span>
+                </PaginationItem>
                 <PaginationItem>
                   <PaginationNext
                     href="#"
                     onClick={(event) => {
                       event.preventDefault();
-                      onSetSubmissionsPage(Math.min(totalSubmissionPages, submissionsPage + 1));
+                      onGoToNextSubmissionsPage();
                     }}
                     className={
-                      submissionsPage >= totalSubmissionPages ? "pointer-events-none opacity-50" : ""
+                      !hasNextSubmissionsPage || submissionsPagePending
+                        ? "pointer-events-none opacity-50"
+                        : ""
                     }
                   />
                 </PaginationItem>

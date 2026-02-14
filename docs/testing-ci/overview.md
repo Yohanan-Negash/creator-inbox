@@ -2,7 +2,10 @@
 
 ## Current Strategy
 
-The repository currently uses unit-style backend tests focused on Convex business logic and metrics projection behavior.
+The repository uses backend-focused tests across two layers:
+
+- Convex domain/projection tests with `convex-test`
+- Next.js route-handler tests with mocked external integrations (Whop/Inference)
 
 - Test runner: Vitest
 - Convex harness: `convex-test`
@@ -15,6 +18,8 @@ The repository currently uses unit-style backend tests focused on Convex busines
 - `answerSubmission` behavior and metrics deltas
 - `getAdminMetrics` projection reads
 - `backfillCreatorMetrics` rebuild behavior
+- payment checkout/refund/webhook/cashout route behavior
+- request/inference schema validation boundaries
 
 ## CI Philosophy (Current)
 

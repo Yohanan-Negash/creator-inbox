@@ -40,7 +40,9 @@ related: [convex-backend, operations-release]
 |------|---------|
 | `vitest.config.ts` | Vitest runtime config |
 | `__tests__/convex.setup.ts` | Convex test harness initialization |
-| `__tests__/submissions.*.test.ts` | Submission + metrics coverage |
+| `__tests__/submissions.*.test.ts` | Submission lifecycle + metrics + admin pagination coverage |
+| `__tests__/payments.*.test.ts` | Payment/cashout domain logic + HTTP route behavior |
+| `__tests__/inference.schemas.test.ts` | AI schema contract coverage |
 
 ## Related Documentation
 

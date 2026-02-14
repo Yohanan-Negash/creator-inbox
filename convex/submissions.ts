@@ -1,6 +1,7 @@
 import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
+import { paginationOptsValidator } from "convex/server";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 
 export const MIN_SUBMISSION_TEXT_LENGTH = 5;
@@ -102,46 +103,31 @@ export async function applyCreatorMetricsDelta(
   }
 }
 
-async function listCreatorSubmissionsForExperience(
+async function hydrateSubmissionRequestTypeLabels(
   ctx: QueryCtx,
-  experienceId: string,
-  creatorId: string,
+  submissions: Array<{
+    requestTypeId: Id<"requestTypes">;
+    requestTypeTitleSnapshot: string;
+  }>,
 ) {
-  const pending = await ctx.db
-    .query("submissions")
-    .withIndex("by_creator_status", (q) =>
-      q.eq("creatorId", creatorId).eq("status", "pending"),
-    )
-    .filter((q) => q.eq(q.field("experienceId"), experienceId))
-    .collect();
+  const requestTypeIds = Array.from(new Set(submissions.map((item) => item.requestTypeId)));
+  const requestTypeById = new Map<Id<"requestTypes">, Doc<"requestTypes"> | null>();
 
-  const answered = await ctx.db
-    .query("submissions")
-    .withIndex("by_creator_status", (q) =>
-      q.eq("creatorId", creatorId).eq("status", "answered"),
-    )
-    .filter((q) => q.eq(q.field("experienceId"), experienceId))
-    .collect();
-
-  const expired = await ctx.db
-    .query("submissions")
-    .withIndex("by_creator_status", (q) =>
-      q.eq("creatorId", creatorId).eq("status", "expired"),
-    )
-    .filter((q) => q.eq(q.field("experienceId"), experienceId))
-    .collect();
-
-  const refunded = await ctx.db
-    .query("submissions")
-    .withIndex("by_creator_status", (q) =>
-      q.eq("creatorId", creatorId).eq("status", "refunded"),
-    )
-    .filter((q) => q.eq(q.field("experienceId"), experienceId))
-    .collect();
-
-  return [...pending, ...answered, ...expired, ...refunded].sort(
-    (a, b) => b.createdAt - a.createdAt,
+  await Promise.all(
+    requestTypeIds.map(async (requestTypeId) => {
+      const requestType = await ctx.db.get(requestTypeId);
+      requestTypeById.set(requestTypeId, requestType);
+    }),
   );
+
+  return submissions.map((submission) => {
+    const requestType = requestTypeById.get(submission.requestTypeId);
+    return requestType
+      ? requestType.isDeleted === true || requestType.isActive === false
+        ? "Request no longer active"
+        : requestType.title ?? submission.requestTypeTitleSnapshot
+      : "Request no longer active";
+  });
 }
 
 export const listPendingForCreator = query({
@@ -224,6 +210,34 @@ export const listVisibleForUser = query({
         };
       }),
     );
+  },
+});
+
+export const listVisibleForUserPaginated = query({
+  args: {
+    experienceId: v.string(),
+    viewerUserId: v.string(),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const paginated = await ctx.db
+      .query("submissions")
+      .withIndex("by_experience_user_created_at", (q) =>
+        q.eq("experienceId", args.experienceId).eq("userId", args.viewerUserId),
+      )
+      .order("desc")
+      .paginate(args.paginationOpts);
+
+    const requestTypeLabels = await hydrateSubmissionRequestTypeLabels(ctx, paginated.page);
+
+    return {
+      page: paginated.page.map((submission, index) => ({
+        ...submission,
+        requestTypeLabel: requestTypeLabels[index],
+      })),
+      continueCursor: paginated.continueCursor,
+      isDone: paginated.isDone,
+    };
   },
 });
 
@@ -409,41 +423,40 @@ export const deleteSubmissionForCreator = mutation({
   },
 });
 
-export const listForAdminDashboard = query({
+export const listForAdminDashboardPaginated = query({
   args: {
     experienceId: v.string(),
     viewerUserId: v.string(),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
-    const submissions = await listCreatorSubmissionsForExperience(
-      ctx,
-      args.experienceId,
-      args.viewerUserId,
-    );
+    const paginated = await ctx.db
+      .query("submissions")
+      .withIndex("by_creator_experience_created_at", (q) =>
+        q.eq("creatorId", args.viewerUserId).eq("experienceId", args.experienceId),
+      )
+      .order("desc")
+      .paginate(args.paginationOpts);
+
+    const requestTypeLabels = await hydrateSubmissionRequestTypeLabels(ctx, paginated.page);
 
     const now = Date.now();
 
-    return await Promise.all(
-      submissions.map(async (submission) => {
-        const requestType = await ctx.db.get(
-          submission.requestTypeId as Id<"requestTypes">,
-        );
-        const requestTypeLabel = requestType
-          ? requestType.isDeleted === true || requestType.isActive === false
-            ? "Request no longer active"
-            : requestType.title ?? submission.requestTypeTitleSnapshot
-          : "Request no longer active";
+    return {
+      page: paginated.page.map((submission, index) => {
         const deadlineAt =
           submission.createdAt + submission.responseWindowHoursSnapshot * 60 * 60 * 1000;
 
         return {
           ...submission,
-          requestTypeLabel,
+          requestTypeLabel: requestTypeLabels[index],
           deadlineAt,
           isWithinResponseWindow: now <= deadlineAt,
         };
       }),
-    );
+      continueCursor: paginated.continueCursor,
+      isDone: paginated.isDone,
+    };
   },
 });
 

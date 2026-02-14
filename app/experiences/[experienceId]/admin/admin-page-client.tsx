@@ -29,6 +29,7 @@ import { MetricsSubmissionsSection } from "@/components/experiences/admin/metric
 import { AnswerSubmissionDialog } from "@/components/experiences/admin/answer-submission-dialog";
 import {
   fetchAdminData,
+  fetchAdminSubmissionsPage,
   postRequestTypeAction,
   postSubmissionAction,
 } from "./_lib/api";
@@ -121,6 +122,14 @@ export default function AdminPageClient({
   const [deleteConfirmId, setDeleteConfirmId] = useState<Id<"requestTypes"> | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [submissionsPage, setSubmissionsPage] = useState(1);
+  const [submissionsPagePending, setSubmissionsPagePending] = useState(false);
+  const [submissionsCursor, setSubmissionsCursor] = useState<string | null>(null);
+  const [submissionsNextCursor, setSubmissionsNextCursor] = useState<string | null>(() =>
+    initialData.access?.access_level === "admin" && initialData.dashboardSubmissionsIsDone !== true
+      ? (initialData.dashboardSubmissionsContinueCursor ?? null)
+      : null,
+  );
+  const [submissionsCursorHistory, setSubmissionsCursorHistory] = useState<Array<string | null>>([]);
   const [answerDialogSubmissionId, setAnswerDialogSubmissionId] = useState<Id<"submissions"> | null>(null);
   const [answerText, setAnswerText] = useState("");
   const [answerPending, setAnswerPending] = useState(false);
@@ -157,11 +166,21 @@ export default function AdminPageClient({
       const payload = await fetchAdminData(window.location.origin, experienceId, devUserToken);
       setRequestTypes(payload.requestTypes);
       setDashboardSubmissions(payload.dashboardSubmissions);
+      setSubmissionsPage(1);
+      setSubmissionsCursor(null);
+      setSubmissionsCursorHistory([]);
+      setSubmissionsNextCursor(
+        payload.dashboardSubmissionsIsDone ? null : payload.dashboardSubmissionsContinueCursor,
+      );
       setMetrics(payload.metrics);
     } catch (error) {
       setStatusError(getErrorMessage(error, "Failed to load admin data."));
       setRequestTypes([]);
       setDashboardSubmissions([]);
+      setSubmissionsPage(1);
+      setSubmissionsCursor(null);
+      setSubmissionsCursorHistory([]);
+      setSubmissionsNextCursor(null);
       setMetrics(null);
     }
   }, [devUserToken, experienceId]);
@@ -181,21 +200,6 @@ export default function AdminPageClient({
     return requestTypes.slice(start, start + pageSize);
   }, [currentPage, requestTypes]);
 
-  const submissionsPageSize = 6;
-  const totalSubmissionPages = useMemo(() => {
-    const count = dashboardSubmissions?.length ?? 0;
-    return Math.max(1, Math.ceil(count / submissionsPageSize));
-  }, [dashboardSubmissions]);
-
-  const pagedSubmissions = useMemo(() => {
-    if (!dashboardSubmissions) {
-      return [];
-    }
-
-    const start = (submissionsPage - 1) * submissionsPageSize;
-    return dashboardSubmissions.slice(start, start + submissionsPageSize);
-  }, [dashboardSubmissions, submissionsPage]);
-
   const selectedSubmission = useMemo(() => {
     if (!dashboardSubmissions || !answerDialogSubmissionId) {
       return null;
@@ -212,12 +216,24 @@ export default function AdminPageClient({
     if (initialData.access?.access_level === "admin") {
       setRequestTypes(initialData.requestTypes ?? []);
       setDashboardSubmissions(normalizeAdminSubmissions(initialData.dashboardSubmissions));
+      setSubmissionsPage(1);
+      setSubmissionsCursor(null);
+      setSubmissionsCursorHistory([]);
+      setSubmissionsNextCursor(
+        initialData.dashboardSubmissionsIsDone === true
+          ? null
+          : (initialData.dashboardSubmissionsContinueCursor ?? null),
+      );
       setMetrics(initialData.metrics ?? null);
       return;
     }
 
     setRequestTypes(undefined);
     setDashboardSubmissions(undefined);
+    setSubmissionsPage(1);
+    setSubmissionsCursor(null);
+    setSubmissionsCursorHistory([]);
+    setSubmissionsNextCursor(null);
     setMetrics(null);
   }, [initialData]);
 
@@ -225,9 +241,71 @@ export default function AdminPageClient({
     setCurrentPage((page) => Math.min(page, totalPages));
   }, [totalPages]);
 
-  useEffect(() => {
-    setSubmissionsPage((page) => Math.min(page, totalSubmissionPages));
-  }, [totalSubmissionPages]);
+  const hasPreviousSubmissionsPage = submissionsCursorHistory.length > 0;
+  const hasNextSubmissionsPage = Boolean(submissionsNextCursor);
+
+  const handleGoToNextSubmissionsPage = useCallback(async () => {
+    if (!submissionsNextCursor || submissionsPagePending) {
+      return;
+    }
+
+    setSubmissionsPagePending(true);
+    try {
+      const payload = await fetchAdminSubmissionsPage(
+        window.location.origin,
+        experienceId,
+        devUserToken,
+        submissionsNextCursor,
+      );
+
+      setDashboardSubmissions(payload.dashboardSubmissions);
+      setSubmissionsCursorHistory((history) => [...history, submissionsCursor]);
+      setSubmissionsCursor(submissionsNextCursor);
+      setSubmissionsNextCursor(
+        payload.dashboardSubmissionsIsDone ? null : payload.dashboardSubmissionsContinueCursor,
+      );
+      setSubmissionsPage((page) => page + 1);
+    } catch (error) {
+      setStatusError(getErrorMessage(error, "Failed to load submissions."));
+    } finally {
+      setSubmissionsPagePending(false);
+    }
+  }, [
+    devUserToken,
+    experienceId,
+    submissionsCursor,
+    submissionsNextCursor,
+    submissionsPagePending,
+  ]);
+
+  const handleGoToPreviousSubmissionsPage = useCallback(async () => {
+    if (submissionsCursorHistory.length === 0 || submissionsPagePending) {
+      return;
+    }
+
+    const previousCursor = submissionsCursorHistory[submissionsCursorHistory.length - 1] ?? null;
+    setSubmissionsPagePending(true);
+    try {
+      const payload = await fetchAdminSubmissionsPage(
+        window.location.origin,
+        experienceId,
+        devUserToken,
+        previousCursor,
+      );
+
+      setDashboardSubmissions(payload.dashboardSubmissions);
+      setSubmissionsCursor(previousCursor);
+      setSubmissionsCursorHistory((history) => history.slice(0, -1));
+      setSubmissionsNextCursor(
+        payload.dashboardSubmissionsIsDone ? null : payload.dashboardSubmissionsContinueCursor,
+      );
+      setSubmissionsPage((page) => Math.max(1, page - 1));
+    } catch (error) {
+      setStatusError(getErrorMessage(error, "Failed to load submissions."));
+    } finally {
+      setSubmissionsPagePending(false);
+    }
+  }, [devUserToken, experienceId, submissionsCursorHistory, submissionsPagePending]);
 
   function resetFormState() {
     setFormValues(defaultFormValues);
@@ -781,10 +859,10 @@ export default function AdminPageClient({
           <MetricsSubmissionsSection
             metrics={metrics}
             dashboardSubmissions={dashboardSubmissions}
-            pagedSubmissions={pagedSubmissions}
-            submissionsPageSize={submissionsPageSize}
             submissionsPage={submissionsPage}
-            totalSubmissionPages={totalSubmissionPages}
+            submissionsPagePending={submissionsPagePending}
+            hasPreviousSubmissionsPage={hasPreviousSubmissionsPage}
+            hasNextSubmissionsPage={hasNextSubmissionsPage}
             onOpenAnswerDialog={openAnswerDialog}
             onRefundSubmission={handleRefundSubmission}
             onSetSubmissionDeleteConfirmId={setSubmissionDeleteConfirmId}
@@ -796,7 +874,8 @@ export default function AdminPageClient({
             refundPendingId={refundPendingId}
             deletePendingId={submissionDeletePendingId}
             submissionDeleteConfirmId={submissionDeleteConfirmId}
-            onSetSubmissionsPage={setSubmissionsPage}
+            onGoToPreviousSubmissionsPage={handleGoToPreviousSubmissionsPage}
+            onGoToNextSubmissionsPage={handleGoToNextSubmissionsPage}
           />
 
           {refundError ? <p className="text-xs text-red-600">{refundError}</p> : null}

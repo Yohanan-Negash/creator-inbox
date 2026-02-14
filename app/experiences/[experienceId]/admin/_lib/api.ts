@@ -18,6 +18,8 @@ export async function fetchAdminData(
 ): Promise<{
   requestTypes: AdminRequestType[];
   dashboardSubmissions: AdminSubmission[];
+  dashboardSubmissionsContinueCursor: string | null;
+  dashboardSubmissionsIsDone: boolean;
   metrics: AdminMetrics | null;
 }> {
   const url = new URL(`/api/whop/experiences/${encodeURIComponent(experienceId)}/admin-data`, origin);
@@ -29,6 +31,8 @@ export async function fetchAdminData(
   const payload = (await response.json()) as {
     requestTypes?: AdminRequestType[];
     dashboardSubmissions?: Array<AdminSubmission & { responseText?: string | null }>;
+    dashboardSubmissionsContinueCursor?: string | null;
+    dashboardSubmissionsIsDone?: boolean;
     metrics?: AdminMetrics;
     error?: string;
   };
@@ -43,7 +47,54 @@ export async function fetchAdminData(
       ...item,
       responseText: item.responseText ?? undefined,
     })),
+    dashboardSubmissionsContinueCursor: payload.dashboardSubmissionsContinueCursor ?? null,
+    dashboardSubmissionsIsDone: payload.dashboardSubmissionsIsDone ?? true,
     metrics: payload.metrics ?? null,
+  };
+}
+
+export async function fetchAdminSubmissionsPage(
+  origin: string,
+  experienceId: string,
+  devUserToken: string,
+  cursor: string | null,
+): Promise<{
+  dashboardSubmissions: AdminSubmission[];
+  dashboardSubmissionsContinueCursor: string | null;
+  dashboardSubmissionsIsDone: boolean;
+}> {
+  const url = new URL(
+    `/api/whop/experiences/${encodeURIComponent(experienceId)}/admin-submissions`,
+    origin,
+  );
+
+  if (devUserToken) {
+    url.searchParams.set("whop-dev-user-token", devUserToken);
+  }
+
+  if (cursor) {
+    url.searchParams.set("cursor", cursor);
+  }
+
+  const response = await fetch(url.toString());
+  const payload = (await response.json()) as {
+    dashboardSubmissions?: Array<AdminSubmission & { responseText?: string | null }>;
+    dashboardSubmissionsContinueCursor?: string | null;
+    dashboardSubmissionsIsDone?: boolean;
+    error?: string;
+  };
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(payload, "Failed to load admin submissions."));
+  }
+
+  return {
+    dashboardSubmissions: (payload.dashboardSubmissions ?? []).map((item) => ({
+      ...item,
+      responseText: item.responseText ?? undefined,
+    })),
+    dashboardSubmissionsContinueCursor: payload.dashboardSubmissionsContinueCursor ?? null,
+    dashboardSubmissionsIsDone: payload.dashboardSubmissionsIsDone ?? true,
   };
 }
 

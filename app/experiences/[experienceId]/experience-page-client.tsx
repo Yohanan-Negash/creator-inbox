@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import type { SubmitEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { z } from "zod";
@@ -73,6 +73,14 @@ export default function ExperiencePageClient({
   const [checkoutPaymentId, setCheckoutPaymentId] = useState<string | null>(null);
   const [checkoutReturnUrl, setCheckoutReturnUrl] = useState<string | null>(null);
   const [submissionsPage, setSubmissionsPage] = useState(1);
+  const [submissionsPagePending, setSubmissionsPagePending] = useState(false);
+  const [submissionsCursor, setSubmissionsCursor] = useState<string | null>(null);
+  const [submissionsNextCursor, setSubmissionsNextCursor] = useState<string | null>(() =>
+    initialData.access?.has_access && initialData.submissionsIsDone !== true
+      ? (initialData.submissionsContinueCursor ?? null)
+      : null,
+  );
+  const [submissionsCursorHistory, setSubmissionsCursorHistory] = useState<Array<string | null>>([]);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<Id<"submissions"> | null>(null);
   const [readSubmissionIds, setReadSubmissionIds] = useState<string[]>([]);
   const [requestTypes, setRequestTypes] = useState<MemberRequestType[] | undefined>(() =>
@@ -85,19 +93,6 @@ export default function ExperiencePageClient({
 
   const viewerUserId = data?.user?.id ?? "";
   const readSubmissionIdSet = useMemo(() => new Set(readSubmissionIds), [readSubmissionIds]);
-  const submissionsPageSize = 6;
-  const totalSubmissionPages = useMemo(() => {
-    const count = submissions?.length ?? 0;
-    return Math.max(1, Math.ceil(count / submissionsPageSize));
-  }, [submissions]);
-
-  const pagedSubmissions = useMemo(() => {
-    if (!submissions) {
-      return [];
-    }
-    const start = (submissionsPage - 1) * submissionsPageSize;
-    return submissions.slice(start, start + submissionsPageSize);
-  }, [submissions, submissionsPage]);
 
   const selectedSubmission = useMemo(() => {
     if (!submissions || !selectedSubmissionId) {
@@ -121,20 +116,26 @@ export default function ExperiencePageClient({
   }, [readSubmissionIdSet, submissions]);
 
   useEffect(() => {
-    setSubmissionsPage((page) => Math.min(page, totalSubmissionPages));
-  }, [totalSubmissionPages]);
-
-  useEffect(() => {
     setData(toWhopResponse(initialData));
 
     if (initialData.access?.has_access) {
       setRequestTypes(initialData.requestTypes ?? []);
       setSubmissions(normalizeSubmissions(initialData.submissions));
+      setSubmissionsPage(1);
+      setSubmissionsCursor(null);
+      setSubmissionsCursorHistory([]);
+      setSubmissionsNextCursor(
+        initialData.submissionsIsDone === true ? null : (initialData.submissionsContinueCursor ?? null),
+      );
       return;
     }
 
     setRequestTypes(undefined);
     setSubmissions(undefined);
+    setSubmissionsPage(1);
+    setSubmissionsCursor(null);
+    setSubmissionsCursorHistory([]);
+    setSubmissionsNextCursor(null);
   }, [initialData]);
 
   useEffect(() => {
@@ -171,19 +172,19 @@ export default function ExperiencePageClient({
   }, [experienceId, readSubmissionIds, viewerUserId]);
 
   useEffect(() => {
-    if (!pagedSubmissions.length) {
+    if (!submissions?.length) {
       setSelectedSubmissionId(null);
       return;
     }
 
-    const isSelectedOnPage = pagedSubmissions.some(
+    const isSelectedOnPage = submissions.some(
       (item) => item._id === selectedSubmissionId,
     );
 
     if (!selectedSubmissionId || !isSelectedOnPage) {
-      setSelectedSubmissionId(pagedSubmissions[0]._id);
+      setSelectedSubmissionId(submissions[0]._id);
     }
-  }, [pagedSubmissions, selectedSubmissionId]);
+  }, [submissions, selectedSubmissionId]);
 
   function openSubmitDialog(item: { _id: Id<"requestTypes">; title: string; price: number }) {
     setSelectedRequestType({ id: item._id, title: item.title, price: item.price });
@@ -283,10 +284,18 @@ export default function ExperiencePageClient({
       const refreshPayload = (await refreshResponse.json()) as {
         requestTypes?: MemberRequestType[];
         submissions?: Array<MemberSubmission & { responseText?: string | null }>;
+        submissionsContinueCursor?: string | null;
+        submissionsIsDone?: boolean;
       };
       if (refreshResponse.ok) {
         setRequestTypes(refreshPayload.requestTypes ?? []);
         setSubmissions(normalizeSubmissions(refreshPayload.submissions));
+        setSubmissionsPage(1);
+        setSubmissionsCursor(null);
+        setSubmissionsCursorHistory([]);
+        setSubmissionsNextCursor(
+          refreshPayload.submissionsIsDone === true ? null : (refreshPayload.submissionsContinueCursor ?? null),
+        );
       }
     } catch {
       // no-op
@@ -294,6 +303,87 @@ export default function ExperiencePageClient({
       setMemberDataLoading(false);
     }
   }
+
+  const hasPreviousSubmissionsPage = submissionsCursorHistory.length > 0;
+  const hasNextSubmissionsPage = Boolean(submissionsNextCursor);
+
+  const fetchMemberSubmissionsPage = useCallback(
+    async (cursor: string | null) => {
+      const url = new URL(
+        `/api/whop/experiences/${encodeURIComponent(experienceId)}/member-submissions`,
+        window.location.origin,
+      );
+
+      if (devUserToken) {
+        url.searchParams.set("whop-dev-user-token", devUserToken);
+      }
+
+      if (cursor) {
+        url.searchParams.set("cursor", cursor);
+      }
+
+      const response = await fetch(url.toString());
+      const payload = (await response.json()) as {
+        submissions?: Array<MemberSubmission & { responseText?: string | null }>;
+        submissionsContinueCursor?: string | null;
+        submissionsIsDone?: boolean;
+      };
+
+      if (!response.ok) {
+        throw new Error("Failed to load submissions.");
+      }
+
+      return {
+        submissions: normalizeSubmissions(payload.submissions),
+        submissionsContinueCursor:
+          payload.submissionsIsDone === true ? null : (payload.submissionsContinueCursor ?? null),
+      };
+    },
+    [devUserToken, experienceId],
+  );
+
+  const handleGoToNextSubmissionsPage = useCallback(async () => {
+    if (!submissionsNextCursor || submissionsPagePending) {
+      return;
+    }
+
+    setSubmissionsPagePending(true);
+    try {
+      const payload = await fetchMemberSubmissionsPage(submissionsNextCursor);
+      setSubmissions(payload.submissions);
+      setSubmissionsCursorHistory((history) => [...history, submissionsCursor]);
+      setSubmissionsCursor(submissionsNextCursor);
+      setSubmissionsNextCursor(payload.submissionsContinueCursor);
+      setSubmissionsPage((page) => page + 1);
+    } finally {
+      setSubmissionsPagePending(false);
+    }
+  }, [
+    fetchMemberSubmissionsPage,
+    submissionsCursor,
+    submissionsNextCursor,
+    submissionsPagePending,
+  ]);
+
+  const handleGoToPreviousSubmissionsPage = useCallback(async () => {
+    if (submissionsCursorHistory.length === 0 || submissionsPagePending) {
+      return;
+    }
+
+    const previousCursor = submissionsCursorHistory[submissionsCursorHistory.length - 1] ?? null;
+
+    setSubmissionsPagePending(true);
+    try {
+      const payload = await fetchMemberSubmissionsPage(previousCursor);
+      setSubmissions(payload.submissions);
+      setSubmissionsCursor(previousCursor);
+      setSubmissionsCursorHistory((history) => history.slice(0, -1));
+      setSubmissionsNextCursor(payload.submissionsContinueCursor);
+      setSubmissionsPage((page) => Math.max(1, page - 1));
+    } finally {
+      setSubmissionsPagePending(false);
+    }
+  }, [fetchMemberSubmissionsPage, submissionsCursorHistory, submissionsPagePending]);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function handleCheckoutComplete(_planId: string, _receiptId?: string) {
@@ -436,16 +526,17 @@ export default function ExperiencePageClient({
             name={data.user?.name}
             isLoading={memberDataLoading}
             submissions={submissions}
-            pagedSubmissions={pagedSubmissions}
             selectedSubmissionId={selectedSubmissionId}
             selectedSubmission={selectedSubmission}
             readSubmissionIds={readSubmissionIds}
             unreadAnsweredCount={unreadAnsweredCount}
             submissionsPage={submissionsPage}
-            totalSubmissionPages={totalSubmissionPages}
-            submissionsPageSize={submissionsPageSize}
+            submissionsPagePending={submissionsPagePending}
+            hasPreviousSubmissionsPage={hasPreviousSubmissionsPage}
+            hasNextSubmissionsPage={hasNextSubmissionsPage}
             onOpenSubmissionDetails={openSubmissionDetails}
-            onSetSubmissionsPage={setSubmissionsPage}
+            onGoToPreviousSubmissionsPage={handleGoToPreviousSubmissionsPage}
+            onGoToNextSubmissionsPage={handleGoToNextSubmissionsPage}
           />
         )
       ) : null}
