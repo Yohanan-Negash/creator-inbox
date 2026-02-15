@@ -28,6 +28,8 @@
   - `__tests__/cashout-fees.test.ts`
 - HTTP route behavior tests (mocked integrations)
   - `__tests__/submissions.action-route.test.ts`
+  - `__tests__/submissions.member-submissions-route.test.ts`
+  - `__tests__/submissions.admin-submissions-route.test.ts`
   - `__tests__/payments.create-submission-payment-route.test.ts`
   - `__tests__/payments.submission-status-route.test.ts`
   - `__tests__/payments.webhook-route.test.ts`
