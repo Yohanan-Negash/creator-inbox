@@ -20,10 +20,6 @@ async function unwrapWebhookPayload(request: NextRequest, whopSdk: unknown) {
   const body = await request.text();
   const key = getWebhookKey();
 
-  if (!key) {
-    throw new Error("Missing WHOP_WEBHOOK_SECRET");
-  }
-
   const sdk = whopSdk as {
     webhooks: {
       unwrap: (input: string, options: { headers: Record<string, string>; key?: string }) => unknown;
@@ -49,6 +45,17 @@ export async function POST(request: NextRequest) {
   const route = "/api/whop/payments/webhook";
 
   try {
+    const webhookSecret = getWebhookKey();
+    if (!webhookSecret) {
+      logger.error("Payment webhook misconfigured (missing secret)", {
+        route,
+        method: "POST",
+        event: "whop.payment.webhook_missing_secret",
+        status: 500,
+      });
+      return NextResponse.json({ error: "Webhook is not configured." }, { status: 500 });
+    }
+
     const whopSdk = getWhopSdk();
     let payload: unknown;
 

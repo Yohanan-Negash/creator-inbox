@@ -41,6 +41,28 @@ describe("POST /api/whop/payments/refund-submission", () => {
     mockNotifyUserSubmissionRefunded.mockResolvedValue(true);
   });
 
+  it("returns 403 when caller is not an admin", async () => {
+    mockCheckAccess.mockResolvedValueOnce({ access_level: "member" });
+
+    const { POST } = await import("../app/api/whop/payments/refund-submission/route");
+    const request = new NextRequest("https://example.com/api/whop/payments/refund-submission", {
+      method: "POST",
+      body: JSON.stringify({
+        experienceId: "exp_1",
+        submissionId: "sub_1",
+      }),
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(403);
+    expect(mockConvexQuery).not.toHaveBeenCalled();
+    expect(mockPaymentsRefund).not.toHaveBeenCalled();
+  });
+
   it("sends requester notification after successful refund finalize", async () => {
     mockConvexQuery.mockResolvedValueOnce({
       submissionId: "sub_1",
@@ -103,5 +125,43 @@ describe("POST /api/whop/payments/refund-submission", () => {
 
     expect(response.status).toBe(200);
     expect(mockNotifyUserSubmissionRefunded).not.toHaveBeenCalled();
+  });
+
+  it("does not call refund when Whop already reports refunded via nested status", async () => {
+    mockConvexQuery.mockResolvedValueOnce({
+      submissionId: "sub_1",
+      status: "pending",
+      paymentId: "pay_1",
+    });
+    mockPaymentsRetrieve.mockResolvedValueOnce({
+      id: "pay_1",
+      status: { status: "paid" },
+      substatus: { status: "refunded" },
+    });
+    mockConvexMutation.mockResolvedValueOnce({
+      _id: "sub_1",
+      experienceId: "exp_1",
+      userId: "user_1",
+      creatorId: "creator_1",
+      requestTypeTitleSnapshot: "Growth strategy",
+    });
+
+    const { POST } = await import("../app/api/whop/payments/refund-submission/route");
+    const request = new NextRequest("https://example.com/api/whop/payments/refund-submission", {
+      method: "POST",
+      body: JSON.stringify({
+        experienceId: "exp_1",
+        submissionId: "sub_1",
+      }),
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(200);
+    expect(mockPaymentsRefund).not.toHaveBeenCalled();
+    expect(mockNotifyUserSubmissionRefunded).toHaveBeenCalledTimes(1);
   });
 });

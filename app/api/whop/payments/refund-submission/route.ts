@@ -13,6 +13,30 @@ const refundSubmissionSchema = z.object({
   whopDevUserToken: z.string().optional(),
 });
 
+function createHttpError(status: number, message: string) {
+  const error = new Error(message) as Error & { status?: number };
+  error.status = status;
+  return error;
+}
+
+function getStatusString(value: unknown) {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value && typeof value === "object") {
+    const statusObj = value as { status?: unknown; value?: unknown };
+    if (typeof statusObj.status === "string") {
+      return statusObj.status;
+    }
+    if (typeof statusObj.value === "string") {
+      return statusObj.value;
+    }
+  }
+
+  return "";
+}
+
 function isWhopPaymentRefunded(payment: unknown) {
   const record = payment as {
     refunded_at?: unknown;
@@ -30,10 +54,25 @@ function isWhopPaymentRefunded(payment: unknown) {
   }
 
   const status = String(record.status ?? "").toLowerCase();
-  const substatus = String(record.substatus ?? "").toLowerCase();
+  const substatus = getStatusString(record.substatus).toLowerCase();
+  const normalizedStatus = getStatusString(record.status).toLowerCase() || status;
+  const refundedFields = payment as {
+    refunded_amount?: unknown;
+    refundedAmount?: unknown;
+    auto_refunded?: unknown;
+    autoRefunded?: unknown;
+  };
+  const refundedAmount = Number(
+    refundedFields.refunded_amount ?? refundedFields.refundedAmount ?? 0,
+  );
+  const autoRefunded = Boolean(
+    refundedFields.auto_refunded ?? refundedFields.autoRefunded ?? false,
+  );
 
   return (
-    status === "refunded" ||
+    refundedAmount > 0 ||
+    autoRefunded ||
+    normalizedStatus === "refunded" ||
     substatus === "refunded" ||
     substatus === "auto_refunded" ||
     substatus === "partially_refunded"
@@ -89,7 +128,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (access.access_level !== "admin") {
-      return NextResponse.json({ error: "Admin access required." }, { status: 403 });
+      throw createHttpError(403, "Admin access required.");
     }
 
     const context = await convex.query(api.payments.getRefundContext, {
@@ -110,7 +149,7 @@ export async function POST(request: NextRequest) {
 
     let whopRefundApplied = false;
 
-    if (context.paymentId) {
+    if (context.paymentId?.startsWith("pay_")) {
       const paymentsClient = (whopSdk as {
         payments: {
           retrieve: (id: string) => Promise<unknown>;
@@ -186,13 +225,39 @@ export async function POST(request: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
+    const errorMessage = getSafeErrorMessage(error);
+    const lower = errorMessage.toLowerCase();
+    let status = (error as { status?: number })?.status;
+
+    if (!status) {
+      if (lower.includes("unauthorized") || lower.includes("admin access required")) {
+        status = 403;
+      } else if (
+        lower.includes("submission not found") ||
+        lower.includes("only pending submissions can be refunded")
+      ) {
+        status = 400;
+      } else {
+        status = 500;
+      }
+    }
+
     logger.error("Submission refund route failed", {
       route,
       method: "POST",
       event: "whop.payment.refund_failed",
-      status: 500,
-      errorMessage: getSafeErrorMessage(error),
+      status,
+      errorMessage,
     });
+
+    if (status === 403) {
+      return NextResponse.json({ error: "Admin access required." }, { status: 403 });
+    }
+
+    if (status === 400) {
+      return NextResponse.json({ error: "Unable to refund this submission." }, { status: 400 });
+    }
+
     return NextResponse.json({ error: "Please try again later." }, { status: 500 });
   }
 }

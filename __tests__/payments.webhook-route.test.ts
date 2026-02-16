@@ -34,6 +34,22 @@ describe("POST /api/whop/payments/webhook", () => {
     mockNotifyAdminSubmissionCreated.mockResolvedValue(true);
   });
 
+  it("returns 500 when webhook secret is missing", async () => {
+    process.env.WHOP_WEBHOOK_SECRET = "";
+
+    const { POST } = await import("../app/api/whop/payments/webhook/route");
+    const request = new NextRequest("https://example.com/api/whop/payments/webhook", {
+      method: "POST",
+      body: JSON.stringify({ type: "payment.succeeded" }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(500);
+    expect(mockWebhookUnwrap).not.toHaveBeenCalled();
+    expect(mockConvexMutation).not.toHaveBeenCalled();
+  });
+
   it("returns 401 when webhook signature is invalid", async () => {
     mockWebhookUnwrap.mockImplementation(() => {
       throw new Error("invalid signature");
