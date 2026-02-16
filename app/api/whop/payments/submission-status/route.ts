@@ -123,8 +123,7 @@ export async function GET(request: NextRequest) {
           }).payments.list({
             company_id: companyId,
             statuses: ["paid", "pending", "open", "void", "uncollectible", "unresolved"],
-            first: 50,
-            created_after: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+            first: 100,
             direction: "desc",
             order: "created_at",
           });
