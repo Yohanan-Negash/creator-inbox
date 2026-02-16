@@ -79,5 +79,5 @@ Defines the unit test strategy with `vitest` and `convex-test`, test layout unde
 ### Operations + Release (4 files)
 Describes branch workflow (`dev` -> `main`), deployment checklist, label-driven semantic versioning, and automated GitHub release publishing.
 
-### SOP (4 files)
+### SOP (5 files)
 Template and standards for adding repeatable operational runbooks as the project evolves.

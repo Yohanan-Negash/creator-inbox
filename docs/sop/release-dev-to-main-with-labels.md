@@ -16,6 +16,7 @@ Use this SOP for the solo-developer release flow where work lands on `dev`, then
 - [ ] Release labels exist: `feat`, `fix`, `enhancement`, `chore`, `docs`, `breaking`
 - [ ] Work is pushed to `dev`
 - [ ] Unit tests are passing
+- [ ] Repository Actions permissions allow release automation (`contents: write`)
 
 ## Procedure
 
@@ -29,7 +30,7 @@ Use this SOP for the solo-developer release flow where work lands on `dev`, then
 
 1. Merge the `dev` -> `main` PR.
 2. Wait for the `Release` workflow to finish.
-3. Confirm automation committed release updates to `main`.
+3. Confirm automation committed release updates to `main` as `chore: release vX.Y.Z`.
 
 ### Step 3: Verify published release
 
@@ -42,11 +43,13 @@ Use this SOP for the solo-developer release flow where work lands on `dev`, then
 - Exactly one release commit was created by automation (`chore: release vX.Y.Z`).
 - GitHub shows matching tag and release.
 - Release notes include the expected label prefix.
+- No separate version PR is expected in this workflow.
 
 ## Troubleshooting
 
 - Missing/duplicate primary labels fail the PR label policy check.
 - No release after merge usually means `Release` workflow failed; inspect workflow logs.
+- If release commit exists but no release appears, verify token permissions and rerun the workflow.
 
 ## Related Documentation
 

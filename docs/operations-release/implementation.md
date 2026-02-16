@@ -37,6 +37,11 @@ Priority rules:
 
 On merged PR to `main`, release workflow runs automatically.
 
+Prerequisites for publish step:
+
+- Workflow permissions include `contents: write`.
+- `GITHUB_TOKEN`/`GH_TOKEN` is available to the release step.
+
 Behavior:
 
 1. Reads labels on the merged PR to compute `major`, `minor`, or `patch`.
@@ -44,6 +49,8 @@ Behavior:
 3. Runs `pnpm version-packages` to update `package.json` and `CHANGELOG.md`.
 4. Commits release updates to `main`.
 5. Runs `pnpm release` to create `v<version>` GitHub release.
+
+Release notes are pulled from the matching `CHANGELOG.md` version section; if no matching section is found, the fallback note is used.
 
 ## Convex Deployment Flow
 
