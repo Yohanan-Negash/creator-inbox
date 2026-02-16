@@ -36,6 +36,12 @@
 - **Cause**: release creation failed in CI (commonly token permission or malformed changelog section).
 - **Fix**: inspect `Release` workflow logs, ensure `contents: write` permission is present, and rerun the workflow after fixing the root cause.
 
+## Release workflow skips publish because release already exists
+
+- **Symptom**: workflow succeeds but logs indicate release creation was skipped.
+- **Cause**: tag/release `vX.Y.Z` already exists, so publish step exits early to avoid duplicate release creation.
+- **Fix**: verify existing release contents; only rerun after incrementing version through a new labeled merge if a new release is required.
+
 ## Local `pnpm changeset status` fails with CPU binary error
 
 - **Symptom**: local command fails with `term-size ... Bad CPU type in executable`.

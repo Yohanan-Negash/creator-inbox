@@ -34,6 +34,7 @@ Use this SOP when a merged `dev` -> `main` PR does not produce the expected vers
 1. Check whether release commit was created on `main`.
 2. Check `package.json` version increment.
 3. Check whether tag `vX.Y.Z` exists.
+4. Check whether a GitHub release for `vX.Y.Z` already exists.
 
 ### Step 4: Fix and rerun
 
@@ -50,6 +51,7 @@ Use this SOP when a merged `dev` -> `main` PR does not produce the expected vers
 
 - If local `pnpm changeset status` fails with architecture errors, use CI as source of truth.
 - If commit succeeds but release is missing, verify `GITHUB_TOKEN` permissions include `contents: write`.
+- If tag/release already exists, release creation is skipped; verify whether a rerun is actually needed.
 
 ## Related Documentation
 

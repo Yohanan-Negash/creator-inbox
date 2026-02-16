@@ -29,8 +29,9 @@ Create an SOP when you encounter a process that:
 | SOP | Description | When to Use |
 |-----|-------------|-------------|
 | [user-facing-error-sanitization-audit.md](./user-facing-error-sanitization-audit.md) | Ensure UI errors stay simple while server logs remain technical | When changing API/UI error handling |
-| [release-from-dev-to-main-label-driven-changesets.md](./release-from-dev-to-main-label-driven-changesets.md) | Ship with label-driven semantic versioning and automated GitHub releases | When promoting `dev` changes to `main` |
-| [triage-failed-automated-release.md](./triage-failed-automated-release.md) | Diagnose failures in version PR or GitHub release automation | When release workflows fail or outputs are missing |
+| [release-dev-to-main-with-labels.md](./release-dev-to-main-with-labels.md) | Ship from `dev` to `main` with label-driven semantic versioning and automated GitHub releases | When promoting `dev` changes to `main` |
+| [release-automation-failure-triage.md](./release-automation-failure-triage.md) | Diagnose failures in automated versioning/tag/release publishing | When release workflows fail or expected outputs are missing |
+| [release-docs-consistency-audit.md](./release-docs-consistency-audit.md) | Keep release/testing docs aligned with workflow automation after CI changes | When editing `.github/workflows/*` or release scripts |
 
 
 ## Creating New SOPs
