@@ -1,6 +1,6 @@
 {
   "name": "creator-inbox",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "whop-proxy --command 'next dev --turbopack'",
@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "node scripts/create-github-release.mjs",
     "convex:dev": "convex dev",
     "convex:dev:local": "convex dev --local",
     "convex:deploy": "convex deploy"
@@ -34,6 +37,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.8",
     "@edge-runtime/vm": "^5.0.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
