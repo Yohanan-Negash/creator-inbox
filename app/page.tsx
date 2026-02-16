@@ -1,5 +1,5 @@
 import { Space_Grotesk } from "next/font/google";
-import { ArrowRight, Coins, Filter, Zap, TrendingUp } from "lucide-react";
+import { ArrowRight, Coins, TrendingUp, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeroScene } from "@/components/marketing/hero-scene";
 
@@ -11,19 +11,19 @@ const displayFont = Space_Grotesk({
 
 const stripItems = [
   {
-    icon: Coins,
-    title: "Instant monetization",
-    copy: "Start earning from your existing audience today, no product creation needed.",
-  },
-  {
-    icon: Filter,
-    title: "Filter out noise",
-    copy: "Paid requests mean serious inquiries only; fewer time-wasters.",
-  },
-  {
     icon: Zap,
-    title: "Effortless setup",
-    copy: "No complicated integrations or learning curves; activate in minutes.",
+    title: "One interface for both sides",
+    copy: "Community members submit paid text requests while creators manage everything in one inbox.",
+  },
+  {
+    icon: TrendingUp,
+    title: "Clear request tracking",
+    copy: "Track every request from submission to response with transparent status updates.",
+  },
+  {
+    icon: Coins,
+    title: "Payments and cashouts built in",
+    copy: "Charge per request, handle refunds when needed, and cash out earnings in one place.",
   },
 ] as const;
 
@@ -46,7 +46,7 @@ export default function Page() {
           className="inline-block border border-primary/35 bg-primary/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-primary"
           {...fadeUp(0)}
         >
-          Creator Inbox
+          Built for Whop creators
         </p>
 
         <h1
@@ -56,14 +56,14 @@ export default function Page() {
             ...fadeUp(80).style,
           }}
         >
-          Your attention is your most valuable asset.
+          Paid message requests, made simple.
         </h1>
 
         <p
           className="max-w-2xl text-base text-cyan-50/76 sm:text-lg"
           {...fadeUp(160)}
         >
-          Stop underpricing it. Set your price, let your audience pay to ask, and get paid fairly for the expertise you&apos;re already giving away.
+          Creator Inbox gives Whop creators and their communities a simple paid messaging workflow: submit requests, track status end to end, and manage responses without messy DM operations.
         </p>
 
         <div
@@ -77,12 +77,7 @@ export default function Page() {
             className="border-primary/60 bg-primary/90 px-5 text-primary-foreground disabled:cursor-not-allowed disabled:opacity-90"
           >
             <span className="inline-flex items-center gap-1.5">
-              Start monetizing your inbox
-              <span className="inline-flex items-center gap-1" aria-hidden="true">
-                <span className="marketing-loading-dot" style={{ animationDelay: "0ms" }} />
-                <span className="marketing-loading-dot" style={{ animationDelay: "140ms" }} />
-                <span className="marketing-loading-dot" style={{ animationDelay: "280ms" }} />
-              </span>
+              Launching for Whop creators
             </span>
             <ArrowRight data-icon="inline-end" />
           </Button>
