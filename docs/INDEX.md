@@ -1,7 +1,7 @@
 ---
 name: Creator Inbox Documentation
 description: Documentation hub for AI coding assistance - use progressive disclosure to find what you need
-last_updated: 2026-02-08
+last_updated: 2026-02-16
 ---
 
 # Documentation Index
@@ -45,6 +45,7 @@ This documentation uses **progressive disclosure** - load only what you need:
 | Debug auth/access issues | `ai-whop-integrations/troubleshooting.md` |
 | Add new unit tests | `testing-ci/implementation.md` |
 | Prepare a release from dev to main | `operations-release/implementation.md` |
+| Run release with PR labels only | `sop/release-dev-to-main-with-labels.md` |
 
 ### By Error Type
 
@@ -76,7 +77,7 @@ Explains server-side routes and utility layers for Whop token validation/access 
 Defines the unit test strategy with `vitest` and `convex-test`, test layout under root `__tests__/`, and CI execution expectations.
 
 ### Operations + Release (4 files)
-Describes branch workflow (`dev` -> `main`), deployment checklist, and interim manual gates while branch rules are unavailable.
+Describes branch workflow (`dev` -> `main`), deployment checklist, label-driven semantic versioning, and automated GitHub release publishing.
 
-### SOP (2 files)
+### SOP (4 files)
 Template and standards for adding repeatable operational runbooks as the project evolves.

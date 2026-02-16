@@ -2,7 +2,7 @@
 name: Standard Operating Procedures
 description: Step-by-step guides for repeating processes and operations
 keywords: [sop, procedures, operations, guides, checklists]
-last_updated: 2026-02-08
+last_updated: 2026-02-16
 ---
 
 # Standard Operating Procedures (SOPs)
@@ -29,6 +29,8 @@ Create an SOP when you encounter a process that:
 | SOP | Description | When to Use |
 |-----|-------------|-------------|
 | [user-facing-error-sanitization-audit.md](./user-facing-error-sanitization-audit.md) | Ensure UI errors stay simple while server logs remain technical | When changing API/UI error handling |
+| [release-dev-to-main-with-labels.md](./release-dev-to-main-with-labels.md) | Ship dev to main with label-driven semantic versioning and GitHub releases | When preparing or executing a release |
+| [release-automation-failure-triage.md](./release-automation-failure-triage.md) | Diagnose failures in automatic versioning or release publishing | When release outputs are missing or workflow fails |
 
 ## Creating New SOPs
 

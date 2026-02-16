@@ -46,6 +46,33 @@ pnpm test --run
 pnpm exec tsc --noEmit
 ```
 
+## GitHub Actions Workflows
+
+### Unit tests
+
+- File: `.github/workflows/unit-tests.yml`
+- Triggers:
+  - push to `dev`
+  - pull request to `main`
+- Behavior: installs dependencies and runs `pnpm test --run`.
+
+### PR label policy
+
+- File: `.github/workflows/pr-label-policy.yml`
+- Trigger: pull request events on `main` (`opened`, `reopened`, `synchronize`, `ready_for_review`, `labeled`, `unlabeled`)
+- Behavior: requires exactly one primary label from `feat`, `fix`, `enhancement`, `chore`, `docs`. Optional `breaking` is allowed.
+
+### Release on merge to main
+
+- File: `.github/workflows/release.yml`
+- Trigger: merged pull request targeting `main`
+- Behavior:
+  1. Derives bump (`major`, `minor`, `patch`) from PR labels
+  2. Generates temporary changeset entry
+  3. Runs `pnpm version-packages` to update `package.json` and `CHANGELOG.md`
+  4. Commits release changes to `main`
+  5. Runs `pnpm release` to publish tag and GitHub release notes
+
 ## Adding New Backend Tests
 
 1. Add a new file under `__tests__/` ending with `.test.ts`.

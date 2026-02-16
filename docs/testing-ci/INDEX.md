@@ -7,7 +7,7 @@ related: [convex-backend, operations-release]
 
 # Testing + CI
 
-**Version:** 1.0 | **Last Updated:** 2026-02-08
+**Version:** 1.1 | **Last Updated:** 2026-02-16
 
 ## Quick Reference
 
@@ -17,6 +17,7 @@ related: [convex-backend, operations-release]
 | **Backend test harness** | `convex-test` |
 | **Test root** | `__tests__/` |
 | **Primary command** | `pnpm test --run` |
+| **Release label gate** | `PR Label Policy` workflow on `main` PRs |
 
 ## Files in This Section
 
@@ -43,6 +44,8 @@ related: [convex-backend, operations-release]
 | `__tests__/submissions.*.test.ts` | Submission lifecycle + metrics + admin pagination coverage |
 | `__tests__/payments.*.test.ts` | Payment/cashout domain logic + HTTP route behavior |
 | `__tests__/inference.schemas.test.ts` | AI schema contract coverage |
+| `.github/workflows/pr-label-policy.yml` | Enforces required release labels on PRs targeting `main` |
+| `.github/workflows/release.yml` | Merged-PR release automation on `main` |
 
 ## Related Documentation
 

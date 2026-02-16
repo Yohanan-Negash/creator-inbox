@@ -44,7 +44,7 @@ related: [testing-ci, convex-backend]
 | `convex/schema.ts` | Schema that must be deployed with backend changes |
 | `package.json` | Canonical dev/test/build scripts |
 | `.github/workflows/release.yml` | Main-branch versioning and GitHub release automation |
-| `.github/workflows/create-changeset-on-dev-merge.yml` | Label-driven changeset generation on merge to `dev` |
+| `.github/workflows/pr-label-policy.yml` | Enforces required release labels on PRs targeting `main` |
 
 ## Related Documentation
 

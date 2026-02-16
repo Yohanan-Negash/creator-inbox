@@ -15,15 +15,17 @@ pnpm lint
 
 ## PR Labeling + Changeset Automation
 
-For every PR targeting `dev`, apply labels before merge:
+For every PR targeting `main` (from `dev`), apply labels before merge:
 
 - Required: exactly one primary label (`feat`, `fix`, `enhancement`, `chore`, or `docs`).
 - Optional: `breaking` for major changes.
 
-On merge to `dev`, CI automatically creates a `.changeset/*.md` file with:
+On merge to `main`, CI automatically:
 
-- The semantic bump (`major`, `minor`, `patch`) derived from labels.
-- A release-note summary prefixed with the primary label.
+- Generates a temporary `.changeset/*.md` file from labels.
+- Applies semantic version + changelog updates.
+- Commits release files back to `main`.
+- Creates tag and GitHub release notes.
 
 Priority rules:
 
@@ -33,15 +35,15 @@ Priority rules:
 
 ## Main Release Automation
 
-On push to `main`, release workflow runs `changesets/action`.
+On merged PR to `main`, release workflow runs automatically.
 
 Behavior:
 
-1. If pending changesets exist, automation opens/updates a `chore: version packages` PR.
-2. After that PR is merged, automation:
-   - reads the new package version,
-   - creates tag `v<version>`,
-   - creates a GitHub Release with notes from the matching `CHANGELOG.md` section.
+1. Reads labels on the merged PR to compute `major`, `minor`, or `patch`.
+2. Builds a release note line with prefix (`feat:`, `fix:`, `enhancement:`, `chore:`, `docs:`).
+3. Runs `pnpm version-packages` to update `package.json` and `CHANGELOG.md`.
+4. Commits release updates to `main`.
+5. Runs `pnpm release` to create `v<version>` GitHub release.
 
 ## Convex Deployment Flow
 
@@ -61,13 +63,12 @@ Use `--prod` when targeting production deployment explicitly.
 
 ## Branch Flow (Current)
 
-1. Open feature PR into `dev`.
-2. Apply one primary release label (`feat`, `fix`, `enhancement`, `chore`, or `docs`).
-3. Merge feature PR to `dev` (changeset file is generated automatically).
-4. Confirm dev checks are green.
-5. Open PR from `dev` to `main`.
-6. Merge after verification.
-7. Merge release version PR generated on `main`.
+1. Push changes to `dev`.
+2. Confirm dev checks are green.
+3. Open PR from `dev` to `main`.
+4. Apply one primary release label (`feat`, `fix`, `enhancement`, `chore`, or `docs`), optionally `breaking`.
+5. Merge PR after verification.
+6. Verify automated release commit, tag, and GitHub release were created.
 
 ## Post-Release Validation
 

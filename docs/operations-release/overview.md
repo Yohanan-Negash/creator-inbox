@@ -10,14 +10,16 @@ Current process relies on feature PRs into `dev` and automated releases from `ma
 ## Versioning + Release Model
 
 - Semantic versioning is managed by Changesets.
-- PR labels on merges to `dev` determine release type.
-- Merges to `main` trigger release automation:
-  1. Create/update version PR when pending changesets exist.
-  2. After version PR merge, create git tag + GitHub release automatically.
+- PR labels on the `dev` -> `main` merge PR determine release type.
+- Merges to `main` trigger release automation that directly:
+  1. Generates a changeset from PR labels.
+  2. Applies version bump + changelog update.
+  3. Commits release changes to `main`.
+  4. Creates git tag + GitHub release automatically.
 
 ## Label Policy
 
-- Exactly one primary label is required per PR to `dev`:
+- Exactly one primary label is required on each PR targeting `main`:
   - `feat` -> minor
   - `fix` -> patch
   - `enhancement` -> patch
