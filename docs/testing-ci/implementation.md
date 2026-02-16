@@ -54,24 +54,30 @@ pnpm exec tsc --noEmit
 - Triggers:
   - push to `dev`
   - pull request to `main`
-- Behavior: installs dependencies and runs `pnpm test --run`.
+- Behavior: installs deps and runs `pnpm test --run`.
 
 ### PR label policy
 
 - File: `.github/workflows/pr-label-policy.yml`
-- Trigger: pull request events on `main` (`opened`, `reopened`, `synchronize`, `ready_for_review`, `labeled`, `unlabeled`)
+- Trigger: pull request events on `dev` (`opened`, `reopened`, `synchronize`, `ready_for_review`, `labeled`, `unlabeled`)
 - Behavior: requires exactly one primary label from `feat`, `fix`, `enhancement`, `chore`, `docs`. Optional `breaking` is allowed.
 
-### Release on merge to main
+### Changeset generation on merge to dev
+
+- File: `.github/workflows/create-changeset-on-dev-merge.yml`
+- Trigger: merged pull request targeting `dev`
+- Behavior:
+  1. Derives bump (`major`, `minor`, `patch`) from labels
+  2. Writes `.changeset/*.md` entry with standardized prefix
+  3. Commits the changeset back to `dev`
+
+### Release workflow on main
 
 - File: `.github/workflows/release.yml`
-- Trigger: merged pull request targeting `main`
+- Trigger: push to `main`
 - Behavior:
-  1. Derives bump (`major`, `minor`, `patch`) from PR labels
-  2. Generates temporary changeset entry
-  3. Runs `pnpm version-packages` to update `package.json` and `CHANGELOG.md`
-  4. Commits release changes to `main`
-  5. Runs `pnpm release` to publish tag and GitHub release notes
+  1. Runs `changesets/action` to open or update `chore: version packages` PR when changesets are pending
+  2. After version PR merge, runs publish script to create git tag and GitHub release notes
 
 ## Adding New Backend Tests
 

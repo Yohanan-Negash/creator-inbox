@@ -23,10 +23,11 @@ The repository uses backend-focused tests across two layers:
 
 ## CI Philosophy (Current)
 
-CI now uses layered checks for the `dev` -> `main` flow:
+CI now has layered safety gates aligned to the `dev` -> `main` release model:
 
 - Unit tests run on pushes to `dev` and PRs targeting `main`.
-- PR label policy runs on PRs targeting `main` and enforces release labeling.
-- Release automation runs after merged PRs to `main`, applies semantic version updates, and creates GitHub releases.
+- PR label policy runs on PRs targeting `dev` and enforces release labeling.
+- Changeset generation runs when a PR to `dev` is merged.
+- Release automation runs on pushes to `main` and creates/updates the version PR, then publishes GitHub releases after version PR merge.
 
-This keeps quality gating test-focused while making release versioning and notes deterministic from PR labels.
+This keeps tests as the quality gate while ensuring version metadata and release notes are generated consistently from PR labels.

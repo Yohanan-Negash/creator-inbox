@@ -17,7 +17,7 @@ related: [convex-backend, operations-release]
 | **Backend test harness** | `convex-test` |
 | **Test root** | `__tests__/` |
 | **Primary command** | `pnpm test --run` |
-| **Release label gate** | `PR Label Policy` workflow on `main` PRs |
+| **Release label gate** | `PR Label Policy` workflow on `dev` PRs |
 
 ## Files in This Section
 
@@ -44,8 +44,9 @@ related: [convex-backend, operations-release]
 | `__tests__/submissions.*.test.ts` | Submission lifecycle + metrics + admin pagination coverage |
 | `__tests__/payments.*.test.ts` | Payment/cashout domain logic + HTTP route behavior |
 | `__tests__/inference.schemas.test.ts` | AI schema contract coverage |
-| `.github/workflows/pr-label-policy.yml` | Enforces required release labels on PRs targeting `main` |
-| `.github/workflows/release.yml` | Merged-PR release automation on `main` |
+| `.github/workflows/pr-label-policy.yml` | Enforces release label requirements on `dev` PRs |
+| `.github/workflows/create-changeset-on-dev-merge.yml` | Generates changesets from labels when PRs merge to `dev` |
+| `.github/workflows/release.yml` | Version PR and GitHub release automation on `main` |
 
 ## Related Documentation
 
