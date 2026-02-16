@@ -35,3 +35,9 @@
 - **Symptom**: version bump commit exists on `main`, but no new repository release is visible.
 - **Cause**: release creation failed in CI (commonly token permission or malformed changelog section).
 - **Fix**: inspect `Release` workflow logs, ensure `contents: write` permission is present, and rerun the workflow after fixing the root cause.
+
+## Local `pnpm changeset status` fails with CPU binary error
+
+- **Symptom**: local command fails with `term-size ... Bad CPU type in executable`.
+- **Cause**: a transitive prebuilt binary does not match the local machine architecture.
+- **Fix**: rely on CI for release workflow checks and use merge-driven automation; if local status checks are required, reinstall dependencies in an architecture-compatible environment.

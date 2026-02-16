@@ -46,6 +46,39 @@ pnpm test --run
 pnpm exec tsc --noEmit
 ```
 
+## GitHub Actions Workflows
+
+### Unit tests
+
+- File: `.github/workflows/unit-tests.yml`
+- Triggers:
+  - push to `dev`
+  - pull request to `main`
+- Behavior: installs deps and runs `pnpm test --run`.
+
+### PR label policy
+
+- File: `.github/workflows/pr-label-policy.yml`
+- Trigger: pull request events on `dev` (`opened`, `reopened`, `synchronize`, `ready_for_review`, `labeled`, `unlabeled`)
+- Behavior: requires exactly one primary label from `feat`, `fix`, `enhancement`, `chore`, `docs`. Optional `breaking` is allowed.
+
+### Changeset generation on merge to dev
+
+- File: `.github/workflows/create-changeset-on-dev-merge.yml`
+- Trigger: merged pull request targeting `dev`
+- Behavior:
+  1. Derives bump (`major`, `minor`, `patch`) from labels
+  2. Writes `.changeset/*.md` entry with standardized prefix
+  3. Commits the changeset back to `dev`
+
+### Release workflow on main
+
+- File: `.github/workflows/release.yml`
+- Trigger: push to `main`
+- Behavior:
+  1. Runs `changesets/action` to open or update `chore: version packages` PR when changesets are pending
+  2. After version PR merge, runs publish script to create git tag and GitHub release notes
+
 ## Adding New Backend Tests
 
 1. Add a new file under `__tests__/` ending with `.test.ts`.
