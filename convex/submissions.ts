@@ -3,8 +3,20 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import {
+  SUBMISSION_ATTACHMENT_ALLOWED_CONTENT_TYPES,
+  SUBMISSION_ATTACHMENT_MAX_SIZE_BYTES,
+  SUBMISSION_ATTACHMENT_STALE_CLEANUP_MS,
+} from "../lib/submissions/constants";
 
 export const MIN_SUBMISSION_TEXT_LENGTH = 5;
+
+export type SubmissionAttachmentSnapshot = {
+  storageId: Id<"_storage">;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+};
 
 export function ensureValidSubmissionText(submissionText: string) {
   if (submissionText.trim().length < MIN_SUBMISSION_TEXT_LENGTH) {
@@ -12,6 +24,30 @@ export function ensureValidSubmissionText(submissionText: string) {
       `Submission text must be at least ${MIN_SUBMISSION_TEXT_LENGTH} characters.`,
     );
   }
+}
+
+function ensureAttachmentContentType(contentType: string) {
+  if (!SUBMISSION_ATTACHMENT_ALLOWED_CONTENT_TYPES.includes(contentType as never)) {
+    throw new Error("Attachment file type is not supported.");
+  }
+}
+
+function ensureAttachmentSize(sizeBytes: number) {
+  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
+    throw new Error("Attachment file size is invalid.");
+  }
+
+  if (sizeBytes > SUBMISSION_ATTACHMENT_MAX_SIZE_BYTES) {
+    throw new Error("Attachment must be 10MB or smaller.");
+  }
+}
+
+function normalizeAttachmentFileName(fileName: string) {
+  const cleaned = fileName.trim().slice(0, 120);
+  if (cleaned.length === 0) {
+    throw new Error("Attachment file name is required.");
+  }
+  return cleaned;
 }
 
 type CreatorMetricsDelta = {
@@ -123,12 +159,227 @@ async function hydrateSubmissionRequestTypeLabels(
   return submissions.map((submission) => {
     const requestType = requestTypeById.get(submission.requestTypeId);
     return requestType
-      ? requestType.isDeleted === true || requestType.isActive === false
-        ? "Request no longer active"
-        : requestType.title ?? submission.requestTypeTitleSnapshot
+      ? requestType.title ?? submission.requestTypeTitleSnapshot
       : "Request no longer active";
   });
 }
+
+async function hydrateSubmissionAttachmentDownloadUrls(
+  ctx: QueryCtx,
+  submissions: Array<{
+    attachment?: SubmissionAttachmentSnapshot;
+  }>,
+) {
+  return await Promise.all(
+    submissions.map(async (submission) => {
+      if (!submission.attachment) {
+        return null;
+      }
+
+      const downloadUrl = await ctx.storage.getUrl(submission.attachment.storageId);
+      return {
+        fileName: submission.attachment.fileName,
+        contentType: submission.attachment.contentType,
+        sizeBytes: submission.attachment.sizeBytes,
+        downloadUrl,
+      };
+    }),
+  );
+}
+
+async function cleanupStalePendingAttachmentsForViewer(
+  ctx: MutationCtx,
+  viewerUserId: string,
+  now: number,
+) {
+  const rows = await ctx.db
+    .query("pendingSubmissionAttachments")
+    .withIndex("by_viewer_created_at", (q) => q.eq("viewerUserId", viewerUserId))
+    .collect();
+
+  for (const row of rows) {
+    if (row.consumedAt) {
+      continue;
+    }
+    if (now - row.createdAt <= SUBMISSION_ATTACHMENT_STALE_CLEANUP_MS) {
+      continue;
+    }
+    await ctx.storage.delete(row.storageId);
+    await ctx.db.delete(row._id);
+  }
+}
+
+export async function consumePendingAttachmentForSubmission(
+  ctx: MutationCtx,
+  args: {
+    token?: string;
+    viewerUserId: string;
+    experienceId: string;
+    requestTypeId: Id<"requestTypes">;
+    allowAttachments: boolean;
+  },
+): Promise<SubmissionAttachmentSnapshot | undefined> {
+  const token = args.token;
+  if (!token) {
+    return undefined;
+  }
+
+  if (!args.allowAttachments) {
+    throw new Error("Attachments are not enabled for this request type.");
+  }
+
+  const rows = await ctx.db
+    .query("pendingSubmissionAttachments")
+    .withIndex("by_token", (q) => q.eq("token", token))
+    .collect();
+
+  const pending = rows[0] ?? null;
+  if (!pending) {
+    throw new Error("Attachment upload has expired or is invalid.");
+  }
+
+  if (pending.viewerUserId !== args.viewerUserId) {
+    throw new Error("Attachment does not belong to this user.");
+  }
+
+  if (pending.experienceId !== args.experienceId || pending.requestTypeId !== args.requestTypeId) {
+    throw new Error("Attachment does not match this request.");
+  }
+
+  if (pending.consumedAt) {
+    throw new Error("Attachment has already been used.");
+  }
+
+  const metadata = await ctx.db.system.get(pending.storageId);
+  if (!metadata) {
+    throw new Error("Attachment file no longer exists.");
+  }
+
+  const contentType = metadata.contentType ?? "";
+  const sizeBytes = metadata.size ?? 0;
+
+  ensureAttachmentContentType(contentType);
+  ensureAttachmentSize(sizeBytes);
+
+  await ctx.db.patch(pending._id, {
+    consumedAt: Date.now(),
+  });
+
+  return {
+    storageId: pending.storageId,
+    fileName: pending.fileName,
+    contentType: pending.contentType,
+    sizeBytes: pending.sizeBytes,
+  };
+}
+
+export const generateSubmissionAttachmentUploadUrl = mutation({
+  args: {
+    viewerUserId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await cleanupStalePendingAttachmentsForViewer(ctx, args.viewerUserId, Date.now());
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const registerPendingSubmissionAttachment = mutation({
+  args: {
+    viewerUserId: v.string(),
+    experienceId: v.string(),
+    requestTypeId: v.id("requestTypes"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const requestType = await ctx.db.get(args.requestTypeId);
+    if (!requestType || requestType.experienceId !== args.experienceId) {
+      throw new Error("Request not found.");
+    }
+
+    if (requestType.isDeleted === true || !requestType.isActive) {
+      throw new Error("Request is not active.");
+    }
+
+    if (requestType.allowAttachments !== true) {
+      throw new Error("Attachments are not enabled for this request.");
+    }
+
+    const metadata = await ctx.db.system.get(args.storageId);
+    if (!metadata) {
+      throw new Error("Uploaded file was not found.");
+    }
+
+    const contentType = metadata.contentType ?? "";
+    const sizeBytes = metadata.size ?? 0;
+
+    ensureAttachmentContentType(contentType);
+    ensureAttachmentSize(sizeBytes);
+    const normalizedName = normalizeAttachmentFileName(args.fileName);
+
+    const existing = await ctx.db
+      .query("pendingSubmissionAttachments")
+      .withIndex("by_viewer_experience", (q) =>
+        q.eq("viewerUserId", args.viewerUserId).eq("experienceId", args.experienceId),
+      )
+      .collect();
+
+    for (const row of existing) {
+      if (row.consumedAt) {
+        continue;
+      }
+      await ctx.storage.delete(row.storageId);
+      await ctx.db.delete(row._id);
+    }
+
+    const now = Date.now();
+    const token = crypto.randomUUID();
+
+    await ctx.db.insert("pendingSubmissionAttachments", {
+      token,
+      experienceId: args.experienceId,
+      requestTypeId: args.requestTypeId,
+      viewerUserId: args.viewerUserId,
+      storageId: args.storageId,
+      fileName: normalizedName,
+      contentType,
+      sizeBytes,
+      createdAt: now,
+    });
+
+    return {
+      token,
+      fileName: normalizedName,
+      contentType,
+      sizeBytes,
+    };
+  },
+});
+
+export const cancelPendingSubmissionAttachment = mutation({
+  args: {
+    token: v.string(),
+    viewerUserId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("pendingSubmissionAttachments")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .collect();
+
+    const pending = rows[0] ?? null;
+    if (!pending || pending.viewerUserId !== args.viewerUserId) {
+      return { success: false };
+    }
+
+    if (!pending.consumedAt) {
+      await ctx.storage.delete(pending.storageId);
+    }
+
+    await ctx.db.delete(pending._id);
+    return { success: true };
+  },
+});
 
 export const listPendingForCreator = query({
   args: {
@@ -193,20 +444,21 @@ export const listVisibleForUser = query({
 
     const combined = Array.from(map.values()).sort((a, b) => b.createdAt - a.createdAt);
 
+    const attachmentDownloads = await hydrateSubmissionAttachmentDownloadUrls(ctx, combined);
+
     return await Promise.all(
-      combined.map(async (submission) => {
+      combined.map(async (submission, index) => {
         const requestType = await ctx.db.get(
           submission.requestTypeId as Id<"requestTypes">,
         );
         const requestTypeLabel = requestType
-          ? requestType.isDeleted === true || requestType.isActive === false
-            ? "Request no longer active"
-            : requestType.title ?? submission.requestTypeTitleSnapshot
+          ? requestType.title ?? submission.requestTypeTitleSnapshot
           : "Request no longer active";
 
         return {
           ...submission,
           requestTypeLabel,
+          attachment: attachmentDownloads[index],
         };
       }),
     );
@@ -229,14 +481,54 @@ export const listVisibleForUserPaginated = query({
       .paginate(args.paginationOpts);
 
     const requestTypeLabels = await hydrateSubmissionRequestTypeLabels(ctx, paginated.page);
+    const attachmentDownloads = await hydrateSubmissionAttachmentDownloadUrls(ctx, paginated.page);
 
     return {
       page: paginated.page.map((submission, index) => ({
         ...submission,
         requestTypeLabel: requestTypeLabels[index],
+        attachment: attachmentDownloads[index],
       })),
       continueCursor: paginated.continueCursor,
       isDone: paginated.isDone,
+    };
+  },
+});
+
+export const getAttachmentDownloadForViewer = query({
+  args: {
+    experienceId: v.string(),
+    submissionId: v.id("submissions"),
+    viewerUserId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const submission = await ctx.db.get(args.submissionId);
+    if (!submission) {
+      throw new Error("Submission not found.");
+    }
+
+    if (submission.experienceId !== args.experienceId) {
+      throw new Error("Submission does not belong to this experience.");
+    }
+
+    if (submission.userId !== args.viewerUserId && submission.creatorId !== args.viewerUserId) {
+      throw new Error("Unauthorized");
+    }
+
+    if (!submission.attachment) {
+      throw new Error("Attachment not found.");
+    }
+
+    const downloadUrl = await ctx.storage.getUrl(submission.attachment.storageId);
+    if (!downloadUrl) {
+      throw new Error("Attachment URL unavailable.");
+    }
+
+    return {
+      downloadUrl,
+      fileName: submission.attachment.fileName,
+      contentType: submission.attachment.contentType,
+      sizeBytes: submission.attachment.sizeBytes,
     };
   },
 });
@@ -271,6 +563,7 @@ export const createSubmission = mutation({
     viewerUserId: v.string(),
     viewerUserName: v.string(),
     submissionText: v.string(),
+    attachmentToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     ensureValidSubmissionText(args.submissionText);
@@ -288,6 +581,14 @@ export const createSubmission = mutation({
       throw new Error("Request does not belong to this experience.");
     }
 
+    const attachment = await consumePendingAttachmentForSubmission(ctx, {
+      token: args.attachmentToken,
+      viewerUserId: args.viewerUserId,
+      experienceId: args.experienceId,
+      requestTypeId: args.requestTypeId,
+      allowAttachments: requestType.allowAttachments === true,
+    });
+
     const submissionId = await ctx.db.insert("submissions", {
       experienceId: args.experienceId,
       requestTypeId: args.requestTypeId,
@@ -298,6 +599,7 @@ export const createSubmission = mutation({
       amountUsd: requestType.price,
       responseWindowHoursSnapshot: requestType.responseWindowHours,
       submissionText: args.submissionText,
+      attachment,
       createdAt: Date.now(),
       status: "pending",
       paymentStatus: "held",
@@ -439,6 +741,7 @@ export const listForAdminDashboardPaginated = query({
       .paginate(args.paginationOpts);
 
     const requestTypeLabels = await hydrateSubmissionRequestTypeLabels(ctx, paginated.page);
+    const attachmentDownloads = await hydrateSubmissionAttachmentDownloadUrls(ctx, paginated.page);
 
     const now = Date.now();
 
@@ -450,6 +753,7 @@ export const listForAdminDashboardPaginated = query({
         return {
           ...submission,
           requestTypeLabel: requestTypeLabels[index],
+          attachment: attachmentDownloads[index],
           deadlineAt,
           isWithinResponseWindow: now <= deadlineAt,
         };

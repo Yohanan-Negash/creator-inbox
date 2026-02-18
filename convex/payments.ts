@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import {
   applyCreatorMetricsDelta,
+  consumePendingAttachmentForSubmission,
   ensureValidSubmissionText,
 } from "./submissions";
 
@@ -38,6 +39,7 @@ export const getRequestTypeQuote = query({
       creatorId: requestType.creatorId,
       title: requestType.title,
       price: requestType.price,
+      allowAttachments: requestType.allowAttachments === true,
     };
   },
 });
@@ -53,6 +55,7 @@ export const upsertSubmissionPayment = mutation({
     viewerUserName: v.string(),
     submissionText: v.string(),
     amountUsd: v.number(),
+    attachmentToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     ensureValidSubmissionText(args.submissionText);
@@ -100,6 +103,7 @@ export const upsertSubmissionPayment = mutation({
       viewerUserName: args.viewerUserName,
       submissionText: args.submissionText,
       amountUsd: args.amountUsd,
+      attachmentToken: args.attachmentToken,
       status: "pending",
       createdAt: now,
       updatedAt: now,
@@ -166,6 +170,14 @@ export const completeSubmissionPayment = mutation({
       throw new Error("Request does not belong to this experience.");
     }
 
+    const attachment = await consumePendingAttachmentForSubmission(ctx, {
+      token: paymentRow.attachmentToken,
+      viewerUserId: paymentRow.viewerUserId,
+      experienceId: paymentRow.experienceId,
+      requestTypeId: paymentRow.requestTypeId,
+      allowAttachments: requestType.allowAttachments === true,
+    });
+
     const submissionId = await ctx.db.insert("submissions", {
       experienceId: paymentRow.experienceId,
       requestTypeId: paymentRow.requestTypeId,
@@ -176,6 +188,7 @@ export const completeSubmissionPayment = mutation({
       amountUsd: requestType.price,
       responseWindowHoursSnapshot: requestType.responseWindowHours,
       submissionText: paymentRow.submissionText,
+      attachment,
       createdAt: Date.now(),
       status: "pending",
       paymentStatus: "held",
@@ -338,6 +351,7 @@ export const findPendingPaymentForUser = query({
     requestTypeId: v.id("requestTypes"),
     viewerUserId: v.string(),
     submissionText: v.string(),
+    attachmentToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const rows = await ctx.db
@@ -351,7 +365,8 @@ export const findPendingPaymentForUser = query({
       (row) =>
         row.status === "pending" &&
         row.requestTypeId === args.requestTypeId &&
-        row.submissionText === args.submissionText,
+        row.submissionText === args.submissionText &&
+        (row.attachmentToken ?? undefined) === (args.attachmentToken ?? undefined),
     );
 
     if (!match) {

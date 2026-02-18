@@ -10,6 +10,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import type { Id } from "@/convex/_generated/dataModel";
 import {
   REQUEST_TYPE_DESCRIPTION_MAX_LENGTH,
+  REQUEST_TYPE_PRICE_MAX_USD,
   REQUEST_TYPE_TITLE_MAX_LENGTH,
 } from "@/lib/request-types/constants";
 import type { WhopResponse } from "@/lib/types/experiences/common";
@@ -54,11 +55,13 @@ const requestTypeFormSchema = z.object({
   price: z.coerce
     .number()
     .int("Price must be a whole number.")
-    .min(0, "Price must be 0 or greater."),
+    .min(0, "Price must be 0 or greater.")
+    .max(REQUEST_TYPE_PRICE_MAX_USD, `Price must be $${REQUEST_TYPE_PRICE_MAX_USD} or less.`),
   responseWindowHours: z.coerce
     .number()
     .int("Response window must be a whole number.")
     .positive("Response window must be greater than 0."),
+  allowAttachments: z.boolean(),
 });
 
 const defaultFormValues: RequestTypeFormValues = {
@@ -66,6 +69,7 @@ const defaultFormValues: RequestTypeFormValues = {
   description: "",
   price: "",
   responseWindowHours: "",
+  allowAttachments: false,
 };
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -326,6 +330,7 @@ export default function AdminPageClient({
     description: string;
     price: number;
     responseWindowHours: number;
+    allowAttachments: boolean;
   }) {
     setEditingRequestTypeId(item._id);
     setFieldErrors({});
@@ -335,6 +340,7 @@ export default function AdminPageClient({
       description: item.description,
       price: String(item.price),
       responseWindowHours: String(item.responseWindowHours),
+      allowAttachments: item.allowAttachments,
     });
     setDialogOpen(true);
   }
@@ -414,6 +420,7 @@ export default function AdminPageClient({
         description: suggestion.description,
         price: String(suggestion.price),
         responseWindowHours: String(suggestion.responseWindowHours),
+        allowAttachments: formValues.allowAttachments,
       });
     } catch (error) {
       if (controller.signal.aborted) {
@@ -463,6 +470,7 @@ export default function AdminPageClient({
               description: parsed.data.description,
               price: parsed.data.price,
               responseWindowHours: parsed.data.responseWindowHours,
+              allowAttachments: parsed.data.allowAttachments,
               whopDevUserToken: devUserToken || undefined,
             }
           : {
@@ -471,6 +479,7 @@ export default function AdminPageClient({
               description: parsed.data.description,
               price: parsed.data.price,
               responseWindowHours: parsed.data.responseWindowHours,
+              allowAttachments: parsed.data.allowAttachments,
               whopDevUserToken: devUserToken || undefined,
             },
       );
@@ -857,6 +866,8 @@ export default function AdminPageClient({
       ) : (
         <section className="grid gap-4">
           <MetricsSubmissionsSection
+            experienceId={experienceId}
+            devUserToken={devUserToken}
             metrics={metrics}
             dashboardSubmissions={dashboardSubmissions}
             submissionsPage={submissionsPage}
@@ -885,6 +896,8 @@ export default function AdminPageClient({
           {cashoutError ? <p className="text-xs text-red-600">{cashoutError}</p> : null}
 
           <AnswerSubmissionDialog
+            experienceId={experienceId}
+            devUserToken={devUserToken}
             open={Boolean(answerDialogSubmissionId)}
             selectedSubmission={selectedSubmission}
             answerText={answerText}

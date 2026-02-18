@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import {
   REQUEST_TYPE_DESCRIPTION_MAX_LENGTH,
+  REQUEST_TYPE_PRICE_MAX_USD,
   REQUEST_TYPE_TITLE_MAX_LENGTH,
 } from "../lib/request-types/constants";
 
@@ -40,6 +41,10 @@ function ensureValidPricingInputs(price: number, responseWindowHours: number) {
     throw new Error("Price must be a non-negative whole number.");
   }
 
+  if (price > REQUEST_TYPE_PRICE_MAX_USD) {
+    throw new Error(`Price must be $${REQUEST_TYPE_PRICE_MAX_USD} or less.`);
+  }
+
   if (!Number.isInteger(responseWindowHours) || responseWindowHours <= 0) {
     throw new Error("Response window must be a positive whole number.");
   }
@@ -57,7 +62,12 @@ export const listActiveByExperience = query({
       )
       .collect();
 
-    return rows.filter((row) => row.isDeleted !== true);
+    return rows
+      .filter((row) => row.isDeleted !== true)
+      .map((row) => ({
+        ...row,
+        allowAttachments: row.allowAttachments === true,
+      }));
   },
 });
 
@@ -74,7 +84,12 @@ export const listByExperienceCreator = query({
       )
       .collect();
 
-    return rows.filter((row) => row.isDeleted !== true);
+    return rows
+      .filter((row) => row.isDeleted !== true)
+      .map((row) => ({
+        ...row,
+        allowAttachments: row.allowAttachments === true,
+      }));
   },
 });
 
@@ -86,6 +101,7 @@ export const createRequestType = mutation({
     description: v.string(),
     price: v.number(),
     responseWindowHours: v.number(),
+    allowAttachments: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const title = ensureValidTitle(args.title);
@@ -99,6 +115,7 @@ export const createRequestType = mutation({
       description,
       price: args.price,
       responseWindowHours: args.responseWindowHours,
+      allowAttachments: args.allowAttachments === true,
       isActive: true,
       isDeleted: false,
     });
@@ -169,6 +186,7 @@ export const updateRequestType = mutation({
     description: v.string(),
     price: v.number(),
     responseWindowHours: v.number(),
+    allowAttachments: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const requestType = await ctx.db.get(args.requestTypeId);
@@ -193,6 +211,7 @@ export const updateRequestType = mutation({
       description,
       price: args.price,
       responseWindowHours: args.responseWindowHours,
+      allowAttachments: args.allowAttachments === true,
     });
 
     return await ctx.db.get(args.requestTypeId);

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { zodResponseFormat } from "openai/helpers/zod";
 import {
   REQUEST_TYPE_DESCRIPTION_MAX_LENGTH,
+  REQUEST_TYPE_PRICE_MAX_USD,
   REQUEST_TYPE_TITLE_MAX_LENGTH,
 } from "@/lib/request-types/constants";
 
@@ -12,7 +13,7 @@ export const GeneratedRequestTypeSchema = z.object({
     .trim()
     .min(1)
     .max(REQUEST_TYPE_DESCRIPTION_MAX_LENGTH),
-  price: z.number().min(0),
+  price: z.number().min(0).max(REQUEST_TYPE_PRICE_MAX_USD),
   responseWindowHours: z.number().int().positive(),
 });
 
@@ -62,7 +63,7 @@ export const GenerateRequestTypesInputSchema = z.object({
     .array(
         z.object({
           title: z.string().trim().min(1).max(REQUEST_TYPE_TITLE_MAX_LENGTH),
-          price: z.number().min(0).optional(),
+          price: z.number().min(0).max(REQUEST_TYPE_PRICE_MAX_USD).optional(),
           responseWindowHours: z.number().int().positive().optional(),
         }),
     )
@@ -86,7 +87,7 @@ export const GenerateRequestTypesRouteInputSchema = z.object({
     .array(
         z.object({
           title: z.string().trim().min(1).max(REQUEST_TYPE_TITLE_MAX_LENGTH),
-          price: z.number().min(0).optional(),
+          price: z.number().min(0).max(REQUEST_TYPE_PRICE_MAX_USD).optional(),
           responseWindowHours: z.number().int().positive().optional(),
         }),
     )

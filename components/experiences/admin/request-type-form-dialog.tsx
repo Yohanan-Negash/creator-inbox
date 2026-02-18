@@ -18,19 +18,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   REQUEST_TYPE_DESCRIPTION_MAX_LENGTH,
+  REQUEST_TYPE_PRICE_MAX_USD,
   REQUEST_TYPE_TITLE_MAX_LENGTH,
 } from "@/lib/request-types/constants";
 
 const responseWindowOptions = [1, 2, 4, 6, 12, 24, 48, 72, 168];
+
+function formatResponseWindowLabel(hours: number) {
+  if (hours < 24) {
+    return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+  }
+
+  const days = hours / 24;
+  return `${days} ${days === 1 ? "day" : "days"}`;
+}
 
 type RequestTypeFormValues = {
   title: string;
   description: string;
   price: string;
   responseWindowHours: string;
+  allowAttachments: boolean;
 };
 
 type RequestTypeFieldErrors = Partial<Record<keyof RequestTypeFormValues, string>>;
@@ -161,6 +173,7 @@ export function RequestTypeFormDialog({
                 id="request-type-price"
                 type="number"
                 min="0"
+                max={String(REQUEST_TYPE_PRICE_MAX_USD)}
                 step="1"
                 value={formValues.price}
                 onChange={(event) =>
@@ -183,13 +196,14 @@ export function RequestTypeFormDialog({
               >
                 Make this free
               </Button>
-              <p className="text-[11px] text-zinc-500">Set price to $0 so members can ask without payment.</p>
-              {fieldErrors.price ? <p className="text-xs text-red-600">{fieldErrors.price}</p> : null}
+              <p className="text-[11px] text-zinc-500">
+                Set price to $0 for free requests. {`Maximum price is $${REQUEST_TYPE_PRICE_MAX_USD}.`}
+              </p>
             </div>
 
             <div className="grid gap-1.5">
               <label className="text-xs font-medium" htmlFor="request-type-window">
-                Response window (hours)
+                Response time
               </label>
               <Select
                 value={formValues.responseWindowHours}
@@ -203,21 +217,70 @@ export function RequestTypeFormDialog({
               >
                 <SelectTrigger
                   id="request-type-window"
+                  className="h-10"
                   aria-invalid={Boolean(fieldErrors.responseWindowHours)}
                 >
-                  <SelectValue placeholder="Select response window" />
+                  <SelectValue placeholder="Select response time" />
                 </SelectTrigger>
                 <SelectContent>
                   {responseWindowOptions.map((hours) => (
                     <SelectItem key={hours} value={String(hours)}>
-                      {hours} hours
+                      {formatResponseWindowLabel(hours)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {fieldErrors.responseWindowHours ? (
-                <p className="text-xs text-red-600">{fieldErrors.responseWindowHours}</p>
-              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="justify-start"
+                onClick={() =>
+                  onFormChange({
+                    ...formValues,
+                    responseWindowHours: "24",
+                  })
+                }
+                disabled={submitPending || generatePending}
+              >
+                Use 24-hour default
+              </Button>
+              <p className="text-[11px] text-zinc-500">
+                How long members should expect to wait for your reply.
+              </p>
+            </div>
+          </div>
+
+          <div className="min-h-4">
+            {fieldErrors.responseWindowHours ? (
+              <p className="text-xs text-red-600">{fieldErrors.responseWindowHours}</p>
+            ) : fieldErrors.price ? (
+              <p className="text-xs text-red-600">{fieldErrors.price}</p>
+            ) : null}
+          </div>
+
+          <div className="grid gap-1.5 rounded-none border border-zinc-200 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="grid gap-1">
+                <label className="text-xs font-medium" htmlFor="request-type-allow-attachments">
+                  Allow attachments
+                </label>
+                <p className="text-[11px] text-zinc-500">
+                  Members can attach one file (PDF, JPG, PNG) up to 10MB.
+                </p>
+              </div>
+              <Switch
+                id="request-type-allow-attachments"
+                checked={formValues.allowAttachments}
+                disabled={submitPending || generatePending}
+                onCheckedChange={(checked) =>
+                  onFormChange({
+                    ...formValues,
+                    allowAttachments: checked,
+                  })
+                }
+                aria-label="Allow submission attachments"
+              />
             </div>
           </div>
 

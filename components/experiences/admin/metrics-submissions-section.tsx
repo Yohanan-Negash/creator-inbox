@@ -1,5 +1,5 @@
 import type { Id } from "@/convex/_generated/dataModel";
-import { Loader2, Trash2 } from "lucide-react";
+import { Download, Loader2, Paperclip, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,9 +54,17 @@ type DashboardSubmission = {
   deadlineAt: number;
   isWithinResponseWindow: boolean;
   amountUsd: number;
+  attachment?: {
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    downloadUrl: string | null;
+  } | null;
 };
 
 type MetricsSubmissionsSectionProps = {
+  experienceId: string;
+  devUserToken: string;
   metrics: Metrics | undefined;
   dashboardSubmissions: DashboardSubmission[] | undefined;
   submissionsPage: number;
@@ -79,6 +87,8 @@ type MetricsSubmissionsSectionProps = {
 };
 
 export function MetricsSubmissionsSection({
+  experienceId,
+  devUserToken,
   metrics,
   dashboardSubmissions,
   submissionsPage,
@@ -101,6 +111,15 @@ export function MetricsSubmissionsSection({
 }: MetricsSubmissionsSectionProps) {
   const balanceAvailable = metrics?.balanceAvailable ?? metrics?.moneyEarned ?? 0;
   const cashoutBreakdown = calculateCashoutBreakdown(balanceAvailable);
+  const getAttachmentDownloadHref = (submissionId: string) => {
+    const path = `/api/whop/experiences/${encodeURIComponent(experienceId)}/submissions/${encodeURIComponent(
+      submissionId,
+    )}/attachment/download`;
+    if (!devUserToken) {
+      return path;
+    }
+    return `${path}?whop-dev-user-token=${encodeURIComponent(devUserToken)}`;
+  };
 
   return (
     <section className="grid gap-4">
@@ -209,6 +228,23 @@ export function MetricsSubmissionsSection({
                             ? "Expired window"
                             : formatDateTime(submission.deadlineAt)}
                         </p>
+                        {submission.attachment ? (
+                          <div className="inline-flex items-center gap-1 text-xs text-zinc-600">
+                            <Paperclip className="size-3" />
+                            {submission.attachment.downloadUrl ? (
+                              <a
+                                href={getAttachmentDownloadHref(String(submission._id))}
+                                className="inline-flex items-center gap-1 text-primary hover:underline"
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                {submission.attachment.fileName}
+                                <Download className="size-3" />
+                              </a>
+                            ) : (
+                              <span>{submission.attachment.fileName}</span>
+                            )}
+                          </div>
+                        ) : null}
                       </button>
 
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -283,7 +319,21 @@ export function MetricsSubmissionsSection({
                           }}
                         >
                           <TableCell>{submission.userName}</TableCell>
-                          <TableCell>{submission.requestTypeLabel}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span>{submission.requestTypeLabel}</span>
+                              {submission.attachment?.downloadUrl ? (
+                                <a
+                                  href={getAttachmentDownloadHref(String(submission._id))}
+                                  className="text-primary hover:underline"
+                                  onClick={(event) => event.stopPropagation()}
+                                  aria-label={`Download ${submission.attachment.fileName}`}
+                                >
+                                  <Download className="size-3.5" />
+                                </a>
+                              ) : null}
+                            </div>
+                          </TableCell>
                           <TableCell>
                             <span
                               className={`inline-flex rounded-none border px-2 py-0.5 text-[11px] ${getStatusPillClass(submission.status)}`}
@@ -462,6 +512,7 @@ export function MetricsSubmissionsSection({
                   Cancel
                 </AlertDialogCancel>
                 <AlertDialogAction
+                  className="bg-destructive text-white hover:bg-destructive/90"
                   onClick={onConfirmDeleteSubmission}
                   disabled={
                     !submissionDeleteConfirmId || deletePendingId === submissionDeleteConfirmId

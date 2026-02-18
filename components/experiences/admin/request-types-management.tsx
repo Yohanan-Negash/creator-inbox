@@ -35,6 +35,7 @@ type RequestTypeItem = {
   description: string;
   price: number;
   responseWindowHours: number;
+  allowAttachments: boolean;
   isActive: boolean;
 };
 
@@ -124,6 +125,7 @@ export function RequestTypesManagement({
                         `$${item.price.toFixed(2)}`
                       )} {item.responseWindowHours}h response window · {" "}
                       {item.isActive ? "Active" : "Archived"}
+                      {item.allowAttachments ? " · Attachments enabled" : ""}
                     </p>
                   </div>
 

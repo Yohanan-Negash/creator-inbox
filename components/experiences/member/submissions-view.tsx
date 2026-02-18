@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Id } from "@/convex/_generated/dataModel";
+import { Download, Loader2, Paperclip } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -22,7 +23,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
 import { formatDateTime, getStatusPillClass } from "@/components/experiences/shared/formatters";
 
 type SubmissionItem = {
@@ -32,10 +32,18 @@ type SubmissionItem = {
   createdAt: number;
   amountUsd: number;
   submissionText: string;
+  attachment?: {
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    downloadUrl: string | null;
+  } | null;
   responseText?: string;
 };
 
 type SubmissionsViewProps = {
+  experienceId: string;
+  devUserToken: string;
   username?: string;
   name?: string | null;
   isLoading: boolean;
@@ -55,6 +63,8 @@ type SubmissionsViewProps = {
 };
 
 export function SubmissionsView({
+  experienceId,
+  devUserToken,
   username,
   name,
   isLoading,
@@ -73,6 +83,15 @@ export function SubmissionsView({
   onGoToNextSubmissionsPage,
 }: SubmissionsViewProps) {
   const readSubmissionIdSet = useMemo(() => new Set(readSubmissionIds), [readSubmissionIds]);
+  const getAttachmentDownloadHref = (submissionId: string) => {
+    const path = `/api/whop/experiences/${encodeURIComponent(experienceId)}/submissions/${encodeURIComponent(
+      submissionId,
+    )}/attachment/download`;
+    if (!devUserToken) {
+      return path;
+    }
+    return `${path}?whop-dev-user-token=${encodeURIComponent(devUserToken)}`;
+  };
 
   if (isLoading || submissions === undefined) {
     return (
@@ -232,6 +251,22 @@ export function SubmissionsView({
                     <p className="text-xs text-zinc-700 whitespace-pre-wrap">
                       {selectedSubmission.submissionText}
                     </p>
+                    {selectedSubmission.attachment ? (
+                      <div className="mt-2 inline-flex items-center gap-1 text-xs text-zinc-600">
+                        <Paperclip className="size-3" />
+                        {selectedSubmission.attachment.downloadUrl ? (
+                          <a
+                            href={getAttachmentDownloadHref(String(selectedSubmission._id))}
+                            className="inline-flex items-center gap-1 text-primary hover:underline"
+                          >
+                            {selectedSubmission.attachment.fileName}
+                            <Download className="size-3" />
+                          </a>
+                        ) : (
+                          <span>{selectedSubmission.attachment.fileName}</span>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                   <div>
                     <p className="text-[11px] uppercase tracking-wide text-zinc-500">

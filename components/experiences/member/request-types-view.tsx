@@ -16,6 +16,7 @@ type RequestTypeItem = {
   description: string;
   price: number;
   responseWindowHours: number;
+  allowAttachments: boolean;
 };
 
 type RequestTypesViewProps = {
@@ -64,7 +65,9 @@ export function RequestTypesView({ requestTypes, onOpenSubmitDialog }: RequestTy
                 </p>
               </CardContent>
               <CardFooter className="mt-auto flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-zinc-500">Text response only</p>
+                <p className="text-xs text-zinc-500">
+                  {item.allowAttachments ? "Text response + optional attachment" : "Text response only"}
+                </p>
                 <Button size="sm" className="w-full sm:w-auto" onClick={() => onOpenSubmitDialog(item)}>
                   Submit Request
                 </Button>

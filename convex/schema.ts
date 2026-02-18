@@ -31,6 +31,7 @@ export default defineSchema({
     description: v.string(),
     price: v.number(),
     responseWindowHours: v.number(),
+    allowAttachments: v.optional(v.boolean()),
     isActive: v.boolean(),
     isDeleted: v.optional(v.boolean()),
   })
@@ -47,6 +48,14 @@ export default defineSchema({
     amountUsd: v.number(),
     responseWindowHoursSnapshot: v.number(),
     submissionText: v.string(),
+    attachment: v.optional(
+      v.object({
+        storageId: v.id("_storage"),
+        fileName: v.string(),
+        contentType: v.string(),
+        sizeBytes: v.number(),
+      }),
+    ),
     createdAt: v.number(),
     status: submissionStatus,
     paymentStatus,
@@ -70,6 +79,7 @@ export default defineSchema({
     viewerUserName: v.string(),
     submissionText: v.string(),
     amountUsd: v.number(),
+    attachmentToken: v.optional(v.string()),
     status: submissionPaymentStatus,
     submissionId: v.optional(v.id("submissions")),
     createdAt: v.number(),
@@ -92,6 +102,21 @@ export default defineSchema({
     moneyAvailable: v.number(),
     updatedAt: v.number(),
   }).index("by_creator_experience", ["creatorId", "experienceId"]),
+  pendingSubmissionAttachments: defineTable({
+    token: v.string(),
+    experienceId: v.string(),
+    requestTypeId: v.id("requestTypes"),
+    viewerUserId: v.string(),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    contentType: v.string(),
+    sizeBytes: v.number(),
+    createdAt: v.number(),
+    consumedAt: v.optional(v.number()),
+  })
+    .index("by_token", ["token"])
+    .index("by_viewer_experience", ["viewerUserId", "experienceId"])
+    .index("by_viewer_created_at", ["viewerUserId", "createdAt"]),
   cashouts: defineTable({
     experienceId: v.string(),
     creatorUserId: v.string(),
