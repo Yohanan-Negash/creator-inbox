@@ -1,5 +1,5 @@
 import type { SubmitEvent } from "react";
-import { Loader2 } from "lucide-react";
+import { Download, Loader2, Paperclip, X } from "lucide-react";
 import { WhopCheckoutEmbed } from "@whop/checkout/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,15 @@ import { Textarea } from "@/components/ui/textarea";
 type SelectedRequestType = {
   title: string;
   price: number;
+  allowAttachments: boolean;
+} | null;
+
+type PendingAttachment = {
+  token: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  downloadUrl: string | null;
 } | null;
 
 type SubmitRequestDialogProps = {
@@ -23,15 +32,34 @@ type SubmitRequestDialogProps = {
   selectedRequestType: SelectedRequestType;
   submissionText: string;
   submissionError: string | null;
+  attachmentError: string | null;
+  attachmentPending: boolean;
+  pendingAttachment: PendingAttachment;
   checkoutSessionId: string | null;
   checkoutReturnUrl: string | null;
   onOpenChange: (open: boolean) => void;
   onSubmissionTextChange: (value: string) => void;
   onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
   onCancel: () => void;
+  onAttachmentSelect: (file: File) => void;
+  onAttachmentRemove: () => void;
   onCheckoutComplete: (planId: string, receiptId?: string) => void;
   onCheckoutCancel: () => void;
 };
+
+function formatFileSize(sizeBytes: number) {
+  if (sizeBytes < 1024) {
+    return `${sizeBytes} B`;
+  }
+
+  const kb = sizeBytes / 1024;
+  if (kb < 1024) {
+    return `${kb.toFixed(1)} KB`;
+  }
+
+  const mb = kb / 1024;
+  return `${mb.toFixed(1)} MB`;
+}
 
 export function SubmitRequestDialog({
   open,
@@ -39,12 +67,17 @@ export function SubmitRequestDialog({
   selectedRequestType,
   submissionText,
   submissionError,
+  attachmentError,
+  attachmentPending,
+  pendingAttachment,
   checkoutSessionId,
   checkoutReturnUrl,
   onOpenChange,
   onSubmissionTextChange,
   onSubmit,
   onCancel,
+  onAttachmentSelect,
+  onAttachmentRemove,
   onCheckoutComplete,
   onCheckoutCancel,
 }: SubmitRequestDialogProps) {
@@ -136,6 +169,74 @@ export function SubmitRequestDialog({
               <p className="text-[11px] text-zinc-500">Minimum 5 characters.</p>
               {submissionError ? <p className="text-xs text-red-600">{submissionError}</p> : null}
             </div>
+
+            {selectedRequestType?.allowAttachments ? (
+              <div className="grid gap-1.5">
+                <label className="text-xs font-medium" htmlFor="submission-attachment">
+                  Attachment (optional)
+                </label>
+                {!pendingAttachment ? (
+                  <input
+                    id="submission-attachment"
+                    type="file"
+                    accept=".pdf,image/jpeg,image/png"
+                    disabled={submissionPending || attachmentPending}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) {
+                        onAttachmentSelect(file);
+                      }
+                      event.currentTarget.value = "";
+                    }}
+                    className="text-xs file:mr-2 file:border file:border-zinc-300 file:bg-white file:px-2 file:py-1 file:text-xs"
+                  />
+                ) : (
+                  <div className="flex items-center justify-between gap-2 border border-zinc-200 p-2 text-xs text-zinc-700">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{pendingAttachment.fileName}</p>
+                      <p className="text-zinc-500">{formatFileSize(pendingAttachment.sizeBytes)}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {pendingAttachment.downloadUrl ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          nativeButton={false}
+                          render={<a href={pendingAttachment.downloadUrl} target="_blank" rel="noreferrer" />}
+                          aria-label="Download attachment"
+                        >
+                          <Download className="size-4" />
+                        </Button>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={onAttachmentRemove}
+                        disabled={submissionPending || attachmentPending}
+                        aria-label="Remove attachment"
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <p className="text-[11px] text-zinc-500">PDF, JPG, PNG up to 10MB. 1 file max.</p>
+                {attachmentPending ? (
+                  <p className="inline-flex items-center gap-1 text-xs text-zinc-500">
+                    <Loader2 className="size-3 animate-spin" />
+                    Uploading attachment...
+                  </p>
+                ) : null}
+                {attachmentError ? <p className="text-xs text-red-600">{attachmentError}</p> : null}
+              </div>
+            ) : (
+              <p className="inline-flex items-center gap-1 text-[11px] text-zinc-500">
+                <Paperclip className="size-3" />
+                Attachments are disabled for this request type.
+              </p>
+            )}
 
             <DialogFooter>
               <Button

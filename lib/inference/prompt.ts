@@ -1,6 +1,7 @@
 import type { GenerateRequestTypesInput } from "@/lib/inference/schemas";
 import {
   REQUEST_TYPE_DESCRIPTION_MAX_LENGTH,
+  REQUEST_TYPE_PRICE_MAX_USD,
   REQUEST_TYPE_TITLE_MAX_LENGTH,
 } from "@/lib/request-types/constants";
 
@@ -13,7 +14,7 @@ export function buildRequestTypeSystemPrompt() {
     "Each request must include:",
     `- a short clear title (max ${REQUEST_TYPE_TITLE_MAX_LENGTH} characters)`,
     `- a simple practical description with a concrete TEXT response deliverable (max ${REQUEST_TYPE_DESCRIPTION_MAX_LENGTH} characters)`,
-    "- realistic USD price",
+    `- realistic USD price between $0 and $${REQUEST_TYPE_PRICE_MAX_USD}`,
     "- realistic responseWindowHours as a positive integer",
     "Requests in this app are text-message response products only.",
     "Do not generate deliverables involving videos, calls, voice notes, files, or screen recordings.",

@@ -11,6 +11,7 @@ const createSubmissionPaymentSchema = z.object({
   experienceId: z.string().min(1),
   requestTypeId: z.string().min(1),
   submissionText: z.string().min(5).max(2000),
+  attachmentToken: z.string().uuid().optional(),
   whopDevUserToken: z.string().optional(),
 });
 
@@ -102,6 +103,13 @@ export async function POST(request: NextRequest) {
       requestTypeId: parsed.data.requestTypeId as never,
     });
 
+    if (parsed.data.attachmentToken && !quote.allowAttachments) {
+      return NextResponse.json(
+        { error: "Attachments are not enabled for this request." },
+        { status: 400 },
+      );
+    }
+
     if (quote.price === 0) {
       await convex.mutation(api.submissions.createSubmission, {
         experienceId: parsed.data.experienceId,
@@ -109,6 +117,7 @@ export async function POST(request: NextRequest) {
         viewerUserId,
         viewerUserName,
         submissionText: parsed.data.submissionText,
+        attachmentToken: parsed.data.attachmentToken,
       });
 
       await notifyAdminSubmissionCreated({
@@ -146,6 +155,7 @@ export async function POST(request: NextRequest) {
       requestTypeId: parsed.data.requestTypeId as never,
       viewerUserId,
       submissionText: parsed.data.submissionText,
+      attachmentToken: parsed.data.attachmentToken,
     });
 
     if (existingPending) {
@@ -274,6 +284,7 @@ export async function POST(request: NextRequest) {
       viewerUserName,
       submissionText: parsed.data.submissionText,
       amountUsd: quote.price,
+      attachmentToken: parsed.data.attachmentToken,
     });
 
     logger.info("Submission checkout link created", {

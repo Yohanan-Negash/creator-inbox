@@ -34,6 +34,21 @@ describe("requestTypes integer validation", () => {
     expect(requestType?.price).toBe(0);
   });
 
+  it("rejects price above the whop dynamic plan limit", async () => {
+    const t = createConvexTest();
+
+    await expect(
+      t.mutation(api.requestTypes.createRequestType, {
+        experienceId: "exp-int-price-max",
+        viewerUserId: "creator-int-price-max",
+        title: "Priority review",
+        description: "Priority review request",
+        price: 2501,
+        responseWindowHours: 24,
+      }),
+    ).rejects.toThrowError("Price must be $2500 or less.");
+  });
+
   it("rejects decimal response window on update", async () => {
     const t = createConvexTest();
     const requestType = await t.mutation(api.requestTypes.createRequestType, {

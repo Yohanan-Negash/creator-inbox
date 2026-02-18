@@ -17,6 +17,10 @@ import type {
   MemberRequestType,
   MemberSubmission,
 } from "@/lib/types/experiences/member";
+import {
+  SUBMISSION_ATTACHMENT_ALLOWED_CONTENT_TYPES,
+  SUBMISSION_ATTACHMENT_MAX_SIZE_BYTES,
+} from "@/lib/submissions/constants";
 
 const submissionSchema = z.object({
   submissionText: z
@@ -65,10 +69,20 @@ export default function ExperiencePageClient({
     id: Id<"requestTypes">;
     title: string;
     price: number;
+    allowAttachments: boolean;
   } | null>(null);
   const [submissionText, setSubmissionText] = useState("");
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [submissionPending, setSubmissionPending] = useState(false);
+  const [attachmentPending, setAttachmentPending] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [pendingAttachment, setPendingAttachment] = useState<{
+    token: string;
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    downloadUrl: string | null;
+  } | null>(null);
   const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
   const [checkoutPaymentId, setCheckoutPaymentId] = useState<string | null>(null);
   const [checkoutReturnUrl, setCheckoutReturnUrl] = useState<string | null>(null);
@@ -189,11 +203,159 @@ export default function ExperiencePageClient({
     }
   }, [submissions, selectedSubmissionId]);
 
-  function openSubmitDialog(item: { _id: Id<"requestTypes">; title: string; price: number }) {
-    setSelectedRequestType({ id: item._id, title: item.title, price: item.price });
+  function openSubmitDialog(item: {
+    _id: Id<"requestTypes">;
+    title: string;
+    price: number;
+    allowAttachments: boolean;
+  }) {
+    setSelectedRequestType({
+      id: item._id,
+      title: item.title,
+      price: item.price,
+      allowAttachments: item.allowAttachments,
+    });
     setSubmissionText("");
     setSubmissionError(null);
+    setAttachmentError(null);
+    setPendingAttachment(null);
     setSubmitDialogOpen(true);
+  }
+
+  async function cancelPendingAttachmentUpload(token?: string) {
+    if (!token) {
+      return;
+    }
+
+    try {
+      await fetch(
+        `/api/whop/experiences/${encodeURIComponent(experienceId)}/submission-attachments/cancel`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            whopDevUserToken: devUserToken || undefined,
+          }),
+        },
+      );
+    } catch {
+      // no-op
+    }
+  }
+
+  async function handleAttachmentSelect(file: File) {
+    if (!selectedRequestType?.allowAttachments) {
+      return;
+    }
+
+    setAttachmentError(null);
+
+    if (!SUBMISSION_ATTACHMENT_ALLOWED_CONTENT_TYPES.includes(file.type as never)) {
+      setAttachmentError("Only PDF, JPG, and PNG files are supported.");
+      return;
+    }
+
+    if (file.size > SUBMISSION_ATTACHMENT_MAX_SIZE_BYTES) {
+      setAttachmentError("Attachment must be 10MB or smaller.");
+      return;
+    }
+
+    setAttachmentPending(true);
+
+    try {
+      if (pendingAttachment?.token) {
+        await cancelPendingAttachmentUpload(pendingAttachment.token);
+      }
+
+      const uploadUrlResponse = await fetch(
+        `/api/whop/experiences/${encodeURIComponent(experienceId)}/submission-attachments/upload-url`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            requestTypeId: selectedRequestType.id,
+            whopDevUserToken: devUserToken || undefined,
+          }),
+        },
+      );
+      const uploadUrlPayload = (await uploadUrlResponse.json()) as {
+        uploadUrl?: string;
+        error?: string;
+      };
+      if (!uploadUrlResponse.ok || !uploadUrlPayload.uploadUrl) {
+        throw new Error(uploadUrlPayload.error || "Failed to start upload.");
+      }
+
+      const uploadResponse = await fetch(uploadUrlPayload.uploadUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": file.type,
+        },
+        body: file,
+      });
+
+      const uploadPayload = (await uploadResponse.json()) as { storageId?: string; error?: string };
+      if (!uploadResponse.ok || !uploadPayload.storageId) {
+        throw new Error(uploadPayload.error || "Failed to upload file.");
+      }
+
+      const registerResponse = await fetch(
+        `/api/whop/experiences/${encodeURIComponent(experienceId)}/submission-attachments/register`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            requestTypeId: selectedRequestType.id,
+            storageId: uploadPayload.storageId,
+            fileName: file.name,
+            whopDevUserToken: devUserToken || undefined,
+          }),
+        },
+      );
+
+      const registerPayload = (await registerResponse.json()) as {
+        attachment?: {
+          token: string;
+          fileName: string;
+          contentType: string;
+          sizeBytes: number;
+        };
+        error?: string;
+      };
+
+      if (!registerResponse.ok || !registerPayload.attachment) {
+        throw new Error(registerPayload.error || "Failed to register attachment.");
+      }
+
+      setPendingAttachment({
+        ...registerPayload.attachment,
+        downloadUrl: null,
+      });
+    } catch {
+      setAttachmentError("Failed to upload attachment. Please try again.");
+      setPendingAttachment(null);
+    } finally {
+      setAttachmentPending(false);
+    }
+  }
+
+  async function handleAttachmentRemove() {
+    if (!pendingAttachment?.token) {
+      return;
+    }
+
+    setAttachmentPending(true);
+    await cancelPendingAttachmentUpload(pendingAttachment.token);
+    setPendingAttachment(null);
+    setAttachmentError(null);
+    setAttachmentPending(false);
   }
 
   async function handleSubmitRequest(event: SubmitEvent<HTMLFormElement>) {
@@ -201,6 +363,11 @@ export default function ExperiencePageClient({
 
     if (!selectedRequestType || !viewerUserId) {
       setSubmissionError("Unable to verify your user account. Please refresh and try again.");
+      return;
+    }
+
+    if (attachmentPending) {
+      setSubmissionError("Please wait for attachment upload to finish.");
       return;
     }
 
@@ -224,6 +391,7 @@ export default function ExperiencePageClient({
           experienceId,
           requestTypeId: selectedRequestType.id,
           submissionText: parsed.data.submissionText,
+          attachmentToken: pendingAttachment?.token,
           whopDevUserToken: devUserToken || undefined,
         }),
       });
@@ -246,6 +414,8 @@ export default function ExperiencePageClient({
       if (createPayload.submissionCreated) {
         setSubmitDialogOpen(false);
         resetCheckoutState();
+        setPendingAttachment(null);
+        setAttachmentError(null);
         setSubmissionPending(false);
         setActiveView("submissions");
         await refreshMemberData();
@@ -259,6 +429,8 @@ export default function ExperiencePageClient({
       setCheckoutSessionId(createPayload.checkoutConfigurationId);
       setCheckoutPaymentId(createPayload.paymentId ?? null);
       setCheckoutReturnUrl(createPayload.redirectUrl ?? null);
+      setPendingAttachment(null);
+      setAttachmentError(null);
       setSubmissionPending(false);
       return;
     } catch {
@@ -532,6 +704,8 @@ export default function ExperiencePageClient({
           <RequestTypesView requestTypes={requestTypes} onOpenSubmitDialog={openSubmitDialog} />
         ) : (
           <SubmissionsView
+            experienceId={experienceId}
+            devUserToken={devUserToken}
             username={data.user?.username}
             name={data.user?.name}
             isLoading={memberDataLoading}
@@ -554,29 +728,49 @@ export default function ExperiencePageClient({
 
       <SubmitRequestDialog
         open={submitDialogOpen}
-        onOpenChange={(open) => {
+        onOpenChange={async (open) => {
           if (submissionPending) {
             return;
           }
+
+          if (!open && pendingAttachment?.token) {
+            await cancelPendingAttachmentUpload(pendingAttachment.token);
+          }
+
           setSubmitDialogOpen(open);
           if (!open) {
             setSelectedRequestType(null);
             setSubmissionText("");
             setSubmissionError(null);
+            setAttachmentError(null);
+            setAttachmentPending(false);
+            setPendingAttachment(null);
             resetCheckoutState();
           }
         }}
         submissionPending={submissionPending}
+        attachmentPending={attachmentPending}
+        attachmentError={attachmentError}
+        pendingAttachment={pendingAttachment}
         selectedRequestType={selectedRequestType}
         submissionText={submissionText}
         submissionError={submissionError}
         onSubmissionTextChange={setSubmissionText}
         onSubmit={handleSubmitRequest}
-        onCancel={() => {
+        onAttachmentSelect={handleAttachmentSelect}
+        onAttachmentRemove={handleAttachmentRemove}
+        onCancel={async () => {
           if (submissionPending) {
             return;
           }
+
+          if (pendingAttachment?.token) {
+            await cancelPendingAttachmentUpload(pendingAttachment.token);
+          }
+
           setSubmitDialogOpen(false);
+          setPendingAttachment(null);
+          setAttachmentError(null);
         }}
         checkoutSessionId={checkoutSessionId}
         checkoutReturnUrl={checkoutReturnUrl}

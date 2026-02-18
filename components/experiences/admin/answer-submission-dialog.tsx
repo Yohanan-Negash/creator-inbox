@@ -1,4 +1,5 @@
 import type { SubmitEvent } from "react";
+import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,15 +12,24 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 type SelectedSubmission = {
+  _id: string;
   userName: string;
   requestTypeLabel: string;
   submissionText: string;
   status: "pending" | "answered" | "expired" | "refunded";
   isWithinResponseWindow: boolean;
+  attachment?: {
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    downloadUrl: string | null;
+  } | null;
   responseText?: string;
 } | null;
 
 type AnswerSubmissionDialogProps = {
+  experienceId: string;
+  devUserToken: string;
   open: boolean;
   selectedSubmission: SelectedSubmission;
   answerText: string;
@@ -32,6 +42,8 @@ type AnswerSubmissionDialogProps = {
 };
 
 export function AnswerSubmissionDialog({
+  experienceId,
+  devUserToken,
   open,
   selectedSubmission,
   answerText,
@@ -44,6 +56,13 @@ export function AnswerSubmissionDialog({
 }: AnswerSubmissionDialogProps) {
   const canAnswer =
     selectedSubmission?.status === "pending" && selectedSubmission?.isWithinResponseWindow;
+  const downloadHref = selectedSubmission
+    ? `/api/whop/experiences/${encodeURIComponent(experienceId)}/submissions/${encodeURIComponent(
+        selectedSubmission._id,
+      )}/attachment/download${
+        devUserToken ? `?whop-dev-user-token=${encodeURIComponent(devUserToken)}` : ""
+      }`
+    : "#";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -63,6 +82,30 @@ export function AnswerSubmissionDialog({
             <div className="min-h-20 whitespace-pre-wrap rounded-none border border-zinc-200 p-3 text-xs text-zinc-700">
               {selectedSubmission?.submissionText?.trim() || "No submission text available."}
             </div>
+            {selectedSubmission?.attachment ? (
+              <div className="flex items-center justify-between gap-2 border border-zinc-200 p-2 text-xs text-zinc-700">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{selectedSubmission.attachment.fileName}</p>
+                  <p className="text-zinc-500">Attachment</p>
+                </div>
+                {selectedSubmission.attachment.downloadUrl ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    nativeButton={false}
+                    render={
+                      <a
+                        href={downloadHref}
+                      />
+                    }
+                  >
+                    <Download className="size-4" />
+                    Download
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <div className="grid gap-1.5">

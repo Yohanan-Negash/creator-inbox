@@ -8,6 +8,14 @@ export type MemberRequestType = {
   description: string;
   price: number;
   responseWindowHours: number;
+  allowAttachments: boolean;
+};
+
+type SubmissionAttachment = {
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  downloadUrl: string | null;
 };
 
 export type MemberSubmission = {
@@ -17,5 +25,6 @@ export type MemberSubmission = {
   createdAt: number;
   amountUsd: number;
   submissionText: string;
+  attachment?: SubmissionAttachment | null;
   responseText?: string;
 };

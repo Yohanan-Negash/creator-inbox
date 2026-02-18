@@ -5,6 +5,7 @@ export type RequestTypeFormValues = {
   description: string;
   price: string;
   responseWindowHours: string;
+  allowAttachments: boolean;
 };
 
 export type RequestTypeFieldErrors = Partial<Record<keyof RequestTypeFormValues, string>>;
@@ -27,7 +28,15 @@ export type AdminRequestType = {
   description: string;
   price: number;
   responseWindowHours: number;
+  allowAttachments: boolean;
   isActive: boolean;
+};
+
+type SubmissionAttachment = {
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  downloadUrl: string | null;
 };
 
 export type AdminSubmission = {
@@ -38,6 +47,7 @@ export type AdminSubmission = {
   submissionText: string;
   responseText?: string;
   amountUsd: number;
+  attachment?: SubmissionAttachment | null;
   createdAt: number;
   deadlineAt: number;
   isWithinResponseWindow: boolean;

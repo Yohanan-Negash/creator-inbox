@@ -4,7 +4,10 @@ import { api } from "@/convex/_generated/api";
 import { getConvexServerClient } from "@/lib/convex-server";
 import { getSafeErrorMessage } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { REQUEST_TYPE_TITLE_MAX_LENGTH } from "@/lib/request-types/constants";
+import {
+  REQUEST_TYPE_PRICE_MAX_USD,
+  REQUEST_TYPE_TITLE_MAX_LENGTH,
+} from "@/lib/request-types/constants";
 import { getWhopSdk } from "@/lib/whop";
 
 const actionSchema = z.discriminatedUnion("action", [
@@ -12,8 +15,9 @@ const actionSchema = z.discriminatedUnion("action", [
     action: z.literal("create"),
     title: z.string().trim().min(1).max(REQUEST_TYPE_TITLE_MAX_LENGTH),
     description: z.string().trim().min(1),
-    price: z.number().int().min(0),
+    price: z.number().int().min(0).max(REQUEST_TYPE_PRICE_MAX_USD),
     responseWindowHours: z.number().int().positive(),
+    allowAttachments: z.boolean(),
     whopDevUserToken: z.string().optional(),
   }),
   z.object({
@@ -21,8 +25,9 @@ const actionSchema = z.discriminatedUnion("action", [
     requestTypeId: z.string().min(1),
     title: z.string().trim().min(1).max(REQUEST_TYPE_TITLE_MAX_LENGTH),
     description: z.string().trim().min(1),
-    price: z.number().int().min(0),
+    price: z.number().int().min(0).max(REQUEST_TYPE_PRICE_MAX_USD),
     responseWindowHours: z.number().int().positive(),
+    allowAttachments: z.boolean(),
     whopDevUserToken: z.string().optional(),
   }),
   z.object({
@@ -74,6 +79,7 @@ export async function POST(
           description: body.data.description,
           price: body.data.price,
           responseWindowHours: body.data.responseWindowHours,
+          allowAttachments: body.data.allowAttachments,
         });
         break;
       case "update":
@@ -84,6 +90,7 @@ export async function POST(
           description: body.data.description,
           price: body.data.price,
           responseWindowHours: body.data.responseWindowHours,
+          allowAttachments: body.data.allowAttachments,
         });
         break;
       case "archive":
