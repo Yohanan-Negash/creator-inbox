@@ -1,5 +1,11 @@
 # creator-inbox
 
+## 1.1.2
+
+### Patch Changes
+
+- enhancement: Refactor submission payments
+
 ## 1.1.1
 
 ### Patch Changes
