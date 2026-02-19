@@ -1,5 +1,11 @@
 # creator-inbox
 
+## 1.1.1
+
+### Patch Changes
+
+- chore: Disable AI for now
+
 ## 1.1.0
 
 ### Minor Changes
