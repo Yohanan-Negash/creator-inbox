@@ -1,5 +1,6 @@
 import type { SubmitEvent } from "react";
-import { BotIcon, Loader2 } from "lucide-react";
+// import { BotIcon } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -73,12 +74,12 @@ export function RequestTypeFormDialog({
   submitError,
   submitPending,
   generatePending,
-  generateError,
+  // generateError,
   onOpenChange,
   onOpenCreateDialog,
   onSubmit,
   onCloseDialog,
-  onGenerateWithAi,
+  // onGenerateWithAi,
   onSetFreePrice,
   onFormChange,
 }: RequestTypeFormDialogProps) {
@@ -284,7 +285,8 @@ export function RequestTypeFormDialog({
             </div>
           </div>
 
-          <DialogFooter className="grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+          <DialogFooter className="grid gap-2 sm:grid-cols-[auto_auto] sm:justify-end sm:items-end">
+            {/*
             <div className="flex flex-col gap-1">
               <Button
                 type="button"
@@ -307,6 +309,7 @@ export function RequestTypeFormDialog({
               </Button>
               {generateError ? <p className="text-xs text-red-600">{generateError}</p> : null}
             </div>
+            */}
             <div className="flex flex-col gap-1">
               <Button
                 type="submit"
