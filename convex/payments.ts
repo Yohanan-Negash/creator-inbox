@@ -7,12 +7,22 @@ import {
   ensureValidSubmissionText,
 } from "./submissions";
 
-function getSinglePaymentRecordByPaymentId(rows: Array<{ _id: Id<"submissionPayments"> }>) {
+function getSingleSubmissionPaymentRecord<
+  T extends { _id: Id<"submissionPayments">; createdAt: number; status: string },
+>(rows: Array<T>) {
   if (rows.length === 0) {
     return null;
   }
 
-  return rows[0];
+  const pendingRows = rows
+    .filter((row) => row.status === "pending")
+    .sort((a, b) => b.createdAt - a.createdAt);
+
+  if (pendingRows.length > 0) {
+    return pendingRows[0];
+  }
+
+  return rows.sort((a, b) => b.createdAt - a.createdAt)[0];
 }
 
 export const getRequestTypeQuote = query({
@@ -39,6 +49,7 @@ export const getRequestTypeQuote = query({
       creatorId: requestType.creatorId,
       title: requestType.title,
       price: requestType.price,
+      responseWindowHours: requestType.responseWindowHours,
       allowAttachments: requestType.allowAttachments === true,
     };
   },
@@ -46,7 +57,6 @@ export const getRequestTypeQuote = query({
 
 export const upsertSubmissionPayment = mutation({
   args: {
-    paymentId: v.string(),
     whopCheckoutConfigurationId: v.optional(v.string()),
     checkoutConfigurationId: v.optional(v.string()),
     experienceId: v.string(),
@@ -56,6 +66,7 @@ export const upsertSubmissionPayment = mutation({
     submissionText: v.string(),
     amountUsd: v.number(),
     attachmentToken: v.optional(v.string()),
+    expiresAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     ensureValidSubmissionText(args.submissionText);
@@ -77,24 +88,9 @@ export const upsertSubmissionPayment = mutation({
       throw new Error("Payment amount does not match request price.");
     }
 
-    const existing = await ctx.db
-      .query("submissionPayments")
-      .withIndex("by_payment_id", (q) => q.eq("paymentId", args.paymentId))
-      .collect();
-
-    const existingRecord = getSinglePaymentRecordByPaymentId(existing);
-    if (existingRecord) {
-      const row = await ctx.db.get(existingRecord._id);
-      if (!row) {
-        throw new Error("Payment row missing.");
-      }
-
-      return row;
-    }
-
     const now = Date.now();
     const paymentRowId = await ctx.db.insert("submissionPayments", {
-      paymentId: args.paymentId,
+      whopPaymentId: undefined,
       whopCheckoutConfigurationId: args.whopCheckoutConfigurationId,
       checkoutConfigurationId: args.checkoutConfigurationId,
       experienceId: args.experienceId,
@@ -103,10 +99,15 @@ export const upsertSubmissionPayment = mutation({
       viewerUserName: args.viewerUserName,
       submissionText: args.submissionText,
       amountUsd: args.amountUsd,
+      creatorIdSnapshot: requestType.creatorId,
+      requestTypeTitleSnapshot: requestType.title,
+      responseWindowHoursSnapshot: requestType.responseWindowHours,
+      allowAttachmentsSnapshot: requestType.allowAttachments === true,
       attachmentToken: args.attachmentToken,
       status: "pending",
       createdAt: now,
       updatedAt: now,
+      expiresAt: args.expiresAt,
     });
 
     return await ctx.db.get(paymentRowId);
@@ -115,20 +116,10 @@ export const upsertSubmissionPayment = mutation({
 
 export const completeSubmissionPayment = mutation({
   args: {
-    paymentId: v.string(),
+    submissionPaymentId: v.id("submissionPayments"),
   },
   handler: async (ctx, args) => {
-    const matches = await ctx.db
-      .query("submissionPayments")
-      .withIndex("by_payment_id", (q) => q.eq("paymentId", args.paymentId))
-      .collect();
-
-    const existing = getSinglePaymentRecordByPaymentId(matches);
-    if (!existing) {
-      throw new Error("Payment record not found.");
-    }
-
-    const paymentRow = await ctx.db.get(existing._id);
+    const paymentRow = await ctx.db.get(args.submissionPaymentId);
     if (!paymentRow) {
       throw new Error("Payment row missing.");
     }
@@ -137,15 +128,17 @@ export const completeSubmissionPayment = mutation({
       const existingSubmission = await ctx.db.get(paymentRow.submissionId);
 
       return {
-        paymentId: paymentRow.paymentId,
+        submissionPaymentId: paymentRow._id,
+        whopPaymentId: paymentRow.whopPaymentId ?? "",
         submissionId: paymentRow.submissionId,
         status: paymentRow.status,
         created: false,
         experienceId: paymentRow.experienceId,
-        creatorUserId: existingSubmission?.creatorId ?? "",
+        creatorUserId: paymentRow.creatorIdSnapshot,
         requesterUserId: paymentRow.viewerUserId,
         requesterUserName: paymentRow.viewerUserName,
-        requestTypeTitle: existingSubmission?.requestTypeTitleSnapshot ?? "",
+        requestTypeTitle:
+          existingSubmission?.requestTypeTitleSnapshot ?? paymentRow.requestTypeTitleSnapshot,
       };
     }
 
@@ -157,17 +150,8 @@ export const completeSubmissionPayment = mutation({
       throw new Error("Payment already refunded.");
     }
 
-    const requestType = await ctx.db.get(paymentRow.requestTypeId);
-    if (!requestType) {
-      throw new Error("Request not found.");
-    }
-
-    if (!requestType.isActive || requestType.isDeleted === true) {
-      throw new Error("Request is not active.");
-    }
-
-    if (requestType.experienceId !== paymentRow.experienceId) {
-      throw new Error("Request does not belong to this experience.");
+    if (!paymentRow.whopPaymentId) {
+      throw new Error("Payment is not linked to a provider payment id yet.");
     }
 
     const attachment = await consumePendingAttachmentForSubmission(ctx, {
@@ -175,7 +159,7 @@ export const completeSubmissionPayment = mutation({
       viewerUserId: paymentRow.viewerUserId,
       experienceId: paymentRow.experienceId,
       requestTypeId: paymentRow.requestTypeId,
-      allowAttachments: requestType.allowAttachments === true,
+      allowAttachments: paymentRow.allowAttachmentsSnapshot === true,
     });
 
     const submissionId = await ctx.db.insert("submissions", {
@@ -183,10 +167,10 @@ export const completeSubmissionPayment = mutation({
       requestTypeId: paymentRow.requestTypeId,
       userId: paymentRow.viewerUserId,
       userName: paymentRow.viewerUserName,
-      creatorId: requestType.creatorId,
-      requestTypeTitleSnapshot: requestType.title,
-      amountUsd: requestType.price,
-      responseWindowHoursSnapshot: requestType.responseWindowHours,
+      creatorId: paymentRow.creatorIdSnapshot,
+      requestTypeTitleSnapshot: paymentRow.requestTypeTitleSnapshot,
+      amountUsd: paymentRow.amountUsd,
+      responseWindowHoursSnapshot: paymentRow.responseWindowHoursSnapshot,
       submissionText: paymentRow.submissionText,
       attachment,
       createdAt: Date.now(),
@@ -195,12 +179,12 @@ export const completeSubmissionPayment = mutation({
     });
 
     await applyCreatorMetricsDelta(ctx, {
-      creatorId: requestType.creatorId,
+      creatorId: paymentRow.creatorIdSnapshot,
       experienceId: paymentRow.experienceId,
       delta: {
         totalSubmissions: 1,
         totalPending: 1,
-        moneyAvailable: requestType.price,
+        moneyAvailable: paymentRow.amountUsd,
       },
     });
 
@@ -212,32 +196,89 @@ export const completeSubmissionPayment = mutation({
     });
 
     return {
-      paymentId: paymentRow.paymentId,
+      submissionPaymentId: paymentRow._id,
+      whopPaymentId: paymentRow.whopPaymentId,
       submissionId,
       status: "paid" as const,
       created: true,
       experienceId: paymentRow.experienceId,
-      creatorUserId: requestType.creatorId,
+      creatorUserId: paymentRow.creatorIdSnapshot,
       requesterUserId: paymentRow.viewerUserId,
       requesterUserName: paymentRow.viewerUserName,
-      requestTypeTitle: requestType.title,
+      requestTypeTitle: paymentRow.requestTypeTitleSnapshot,
     };
+  },
+});
+
+export const finalizeCheckoutConfiguration = mutation({
+  args: {
+    submissionPaymentId: v.id("submissionPayments"),
+    whopCheckoutConfigurationId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const paymentRow = await ctx.db.get(args.submissionPaymentId);
+    if (!paymentRow) {
+      throw new Error("Payment row missing.");
+    }
+
+    if (
+      paymentRow.whopCheckoutConfigurationId &&
+      paymentRow.whopCheckoutConfigurationId !== args.whopCheckoutConfigurationId
+    ) {
+      throw new Error("Checkout configuration already finalized with a different id.");
+    }
+
+    await ctx.db.patch(paymentRow._id, {
+      whopCheckoutConfigurationId: args.whopCheckoutConfigurationId,
+      updatedAt: Date.now(),
+      lastError: undefined,
+    });
+
+    return await ctx.db.get(paymentRow._id);
+  },
+});
+
+export const attachWhopPaymentIdToSubmissionPayment = mutation({
+  args: {
+    submissionPaymentId: v.id("submissionPayments"),
+    whopPaymentId: v.string(),
+    whopCheckoutConfigurationId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const paymentRow = await ctx.db.get(args.submissionPaymentId);
+    if (!paymentRow) {
+      throw new Error("Submission payment attempt not found.");
+    }
+
+    if (paymentRow.whopPaymentId && paymentRow.whopPaymentId !== args.whopPaymentId) {
+      throw new Error("Submission payment attempt already linked to a different payment.");
+    }
+
+    await ctx.db.patch(paymentRow._id, {
+      whopPaymentId: args.whopPaymentId,
+      whopCheckoutConfigurationId:
+        paymentRow.whopCheckoutConfigurationId ?? args.whopCheckoutConfigurationId,
+      updatedAt: Date.now(),
+      lastError: undefined,
+    });
+
+    return await ctx.db.get(paymentRow._id);
   },
 });
 
 export const attachPaymentIdToCheckoutConfiguration = mutation({
   args: {
     checkoutConfigurationId: v.string(),
-    paymentId: v.string(),
+    whopPaymentId: v.string(),
   },
   handler: async (ctx, args) => {
     const byPaymentId = await ctx.db
       .query("submissionPayments")
-      .withIndex("by_payment_id", (q) => q.eq("paymentId", args.paymentId))
+      .withIndex("by_whop_payment_id", (q) => q.eq("whopPaymentId", args.whopPaymentId))
       .collect();
 
     if (byPaymentId.length > 0) {
-      return await ctx.db.get(byPaymentId[0]._id);
+      return byPaymentId[0];
     }
 
     const rows = await ctx.db
@@ -251,19 +292,19 @@ export const attachPaymentIdToCheckoutConfiguration = mutation({
       throw new Error("Pending checkout configuration not found.");
     }
 
-    const paymentRow = await ctx.db.get(rows[0]._id);
+    const paymentRow = getSingleSubmissionPaymentRecord(rows);
     if (!paymentRow) {
-      throw new Error("Payment row missing.");
+      throw new Error("Submission payment attempt is missing.");
+    }
+
+    if (paymentRow.whopPaymentId && paymentRow.whopPaymentId !== args.whopPaymentId) {
+      throw new Error("Submission payment attempt already linked to a different payment.");
     }
 
     await ctx.db.patch(paymentRow._id, {
-      paymentId: args.paymentId,
-      whopCheckoutConfigurationId:
-        paymentRow.whopCheckoutConfigurationId ??
-        (paymentRow.paymentId.startsWith("pending:")
-          ? paymentRow.paymentId.slice("pending:".length)
-          : undefined),
+      whopPaymentId: args.whopPaymentId,
       updatedAt: Date.now(),
+      lastError: undefined,
     });
 
     return await ctx.db.get(paymentRow._id);
@@ -273,16 +314,16 @@ export const attachPaymentIdToCheckoutConfiguration = mutation({
 export const attachPaymentIdToWhopCheckoutConfiguration = mutation({
   args: {
     whopCheckoutConfigurationId: v.string(),
-    paymentId: v.string(),
+    whopPaymentId: v.string(),
   },
   handler: async (ctx, args) => {
     const byPaymentId = await ctx.db
       .query("submissionPayments")
-      .withIndex("by_payment_id", (q) => q.eq("paymentId", args.paymentId))
+      .withIndex("by_whop_payment_id", (q) => q.eq("whopPaymentId", args.whopPaymentId))
       .collect();
 
     if (byPaymentId.length > 0) {
-      return await ctx.db.get(byPaymentId[0]._id);
+      return byPaymentId[0];
     }
 
     const rows = await ctx.db
@@ -296,14 +337,19 @@ export const attachPaymentIdToWhopCheckoutConfiguration = mutation({
       throw new Error("Pending whop checkout configuration not found.");
     }
 
-    const paymentRow = await ctx.db.get(rows[0]._id);
+    const paymentRow = getSingleSubmissionPaymentRecord(rows);
     if (!paymentRow) {
-      throw new Error("Payment row missing.");
+      throw new Error("Submission payment attempt is missing.");
+    }
+
+    if (paymentRow.whopPaymentId && paymentRow.whopPaymentId !== args.whopPaymentId) {
+      throw new Error("Submission payment attempt already linked to a different payment.");
     }
 
     await ctx.db.patch(paymentRow._id, {
-      paymentId: args.paymentId,
+      whopPaymentId: args.whopPaymentId,
       updatedAt: Date.now(),
+      lastError: undefined,
     });
 
     return await ctx.db.get(paymentRow._id);
@@ -312,21 +358,11 @@ export const attachPaymentIdToWhopCheckoutConfiguration = mutation({
 
 export const markSubmissionPaymentFailed = mutation({
   args: {
-    paymentId: v.string(),
+    submissionPaymentId: v.id("submissionPayments"),
     errorMessage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const matches = await ctx.db
-      .query("submissionPayments")
-      .withIndex("by_payment_id", (q) => q.eq("paymentId", args.paymentId))
-      .collect();
-
-    const existing = getSinglePaymentRecordByPaymentId(matches);
-    if (!existing) {
-      return null;
-    }
-
-    const paymentRow = await ctx.db.get(existing._id);
+    const paymentRow = await ctx.db.get(args.submissionPaymentId);
     if (!paymentRow) {
       return null;
     }
@@ -352,8 +388,12 @@ export const findPendingPaymentForUser = query({
     viewerUserId: v.string(),
     submissionText: v.string(),
     attachmentToken: v.optional(v.string()),
+    maxAgeMs: v.number(),
   },
   handler: async (ctx, args) => {
+    const now = Date.now();
+    const minCreatedAt = now - args.maxAgeMs;
+
     const rows = await ctx.db
       .query("submissionPayments")
       .withIndex("by_experience_user", (q) =>
@@ -361,63 +401,50 @@ export const findPendingPaymentForUser = query({
       )
       .collect();
 
-    const match = rows.find(
-      (row) =>
-        row.status === "pending" &&
-        row.requestTypeId === args.requestTypeId &&
-        row.submissionText === args.submissionText &&
-        (row.attachmentToken ?? undefined) === (args.attachmentToken ?? undefined),
-    );
+    const match = rows
+      .filter(
+        (row) =>
+          row.status === "pending" &&
+          row.createdAt >= minCreatedAt &&
+          row.requestTypeId === args.requestTypeId &&
+          row.submissionText === args.submissionText &&
+          (row.attachmentToken ?? undefined) === (args.attachmentToken ?? undefined) &&
+          Boolean(row.whopCheckoutConfigurationId) &&
+          (row.expiresAt === undefined || row.expiresAt > now),
+      )
+      .sort((a, b) => b.createdAt - a.createdAt)[0];
 
     if (!match) {
       return null;
     }
 
     return {
-      paymentId: match.paymentId,
-      checkoutConfigurationId: match.checkoutConfigurationId ?? null,
+      submissionPaymentId: match._id,
+      whopCheckoutConfigurationId: match.whopCheckoutConfigurationId ?? null,
+      expiresAt: match.expiresAt ?? null,
     };
   },
 });
 
 export const getSubmissionPaymentStatusForUser = query({
   args: {
-    paymentId: v.string(),
+    submissionPaymentId: v.id("submissionPayments"),
     viewerUserId: v.string(),
   },
   handler: async (ctx, args) => {
-    let matches = await ctx.db
-      .query("submissionPayments")
-      .withIndex("by_payment_id", (q) => q.eq("paymentId", args.paymentId))
-      .collect();
-
-    if (matches.length === 0 && args.paymentId.startsWith("pending:")) {
-      const whopCheckoutConfigurationId = args.paymentId.slice("pending:".length);
-      if (whopCheckoutConfigurationId) {
-        matches = await ctx.db
-          .query("submissionPayments")
-          .withIndex("by_whop_checkout_configuration_id", (q) =>
-            q.eq("whopCheckoutConfigurationId", whopCheckoutConfigurationId),
-          )
-          .collect();
-      }
-    }
-
-    const existing = getSinglePaymentRecordByPaymentId(matches);
-    if (!existing) {
-      return null;
-    }
-
-    const paymentRow = await ctx.db.get(existing._id);
+    const paymentRow = await ctx.db.get(args.submissionPaymentId);
     if (!paymentRow || paymentRow.viewerUserId !== args.viewerUserId) {
       return null;
     }
 
     return {
-      paymentId: paymentRow.paymentId,
+      submissionPaymentId: paymentRow._id,
       status: paymentRow.status,
       submissionId: paymentRow.submissionId ?? null,
       lastError: paymentRow.lastError ?? null,
+      whopPaymentId: paymentRow.whopPaymentId ?? null,
+      whopCheckoutConfigurationId: paymentRow.whopCheckoutConfigurationId ?? null,
+      expiresAt: paymentRow.expiresAt ?? null,
     };
   },
 });
@@ -451,7 +478,7 @@ export const getRefundContext = query({
     return {
       submissionId: submission._id,
       status: submission.status,
-      paymentId: paymentRow?.paymentId ?? null,
+      whopPaymentId: paymentRow?.whopPaymentId ?? null,
       amountUsd: submission.amountUsd,
     };
   },
@@ -461,7 +488,7 @@ export const finalizeSubmissionRefund = mutation({
   args: {
     submissionId: v.id("submissions"),
     viewerUserId: v.string(),
-    paymentId: v.optional(v.string()),
+    whopPaymentId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const submission = await ctx.db.get(args.submissionId);
@@ -495,20 +522,21 @@ export const finalizeSubmissionRefund = mutation({
       },
     });
 
-    const paymentId = args.paymentId;
-    if (paymentId) {
-      const paymentRows = await ctx.db
-        .query("submissionPayments")
-        .withIndex("by_payment_id", (q) => q.eq("paymentId", paymentId))
-        .collect();
+    const paymentRows = await ctx.db
+      .query("submissionPayments")
+      .withIndex("by_submission_id", (q) => q.eq("submissionId", args.submissionId))
+      .collect();
 
-      if (paymentRows.length > 0) {
-        await ctx.db.patch(paymentRows[0]._id, {
-          status: "refunded",
-          refundedAt: Date.now(),
-          updatedAt: Date.now(),
-        });
-      }
+    const paymentRow = args.whopPaymentId
+      ? paymentRows.find((row) => row.whopPaymentId === args.whopPaymentId) ?? null
+      : paymentRows[0] ?? null;
+
+    if (paymentRow) {
+      await ctx.db.patch(paymentRow._id, {
+        status: "refunded",
+        refundedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
     }
 
     return await ctx.db.get(args.submissionId);

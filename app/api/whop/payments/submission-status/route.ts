@@ -6,15 +6,18 @@ import { getWhopSdk } from "@/lib/whop";
 import { getConvexServerClient } from "@/lib/convex-server";
 import {
   extractWhopPaymentStatus,
-  getSubmissionCheckoutContextIdFromPayment,
+  getSubmissionPaymentIdFromPayment,
   getWhopCheckoutConfigurationIdFromPayment,
   getWhopPaymentId,
 } from "@/lib/whop-payments";
 import { notifyAdminSubmissionCreated } from "@/lib/whop-notifications";
 
-async function completePaymentAndNotify(convex: ReturnType<typeof getConvexServerClient>, paymentId: string) {
+async function completePaymentAndNotify(
+  convex: ReturnType<typeof getConvexServerClient>,
+  submissionPaymentId: string,
+) {
   const completion = await convex.mutation(api.payments.completeSubmissionPayment, {
-    paymentId,
+    submissionPaymentId: submissionPaymentId as never,
   });
 
   if (!completion.created) {
@@ -42,12 +45,12 @@ function getPlatformCompanyId() {
 
 export async function GET(request: NextRequest) {
   const experienceId = request.nextUrl.searchParams.get("experienceId") ?? "";
-  const paymentId = request.nextUrl.searchParams.get("paymentId") ?? "";
+  const submissionPaymentId = request.nextUrl.searchParams.get("attemptId") ?? "";
   const devUserToken = request.nextUrl.searchParams.get("whop-dev-user-token") ?? "";
   const route = "/api/whop/payments/submission-status";
 
-  if (!experienceId || !paymentId) {
-    return NextResponse.json({ error: "Missing experienceId or paymentId." }, { status: 400 });
+  if (!experienceId || !submissionPaymentId) {
+    return NextResponse.json({ error: "Missing experienceId or attemptId." }, { status: 400 });
   }
 
   try {
@@ -65,129 +68,100 @@ export async function GET(request: NextRequest) {
     }
 
     let status = await convex.query(api.payments.getSubmissionPaymentStatusForUser, {
-      paymentId,
+      submissionPaymentId: submissionPaymentId as never,
       viewerUserId,
     });
-
-    if (!status && paymentId.startsWith("pay_")) {
-      const payment = await (whopSdk as {
-        payments: { retrieve: (id: string) => Promise<unknown> };
-      }).payments.retrieve(paymentId);
-
-      const checkoutContextId = getSubmissionCheckoutContextIdFromPayment(payment);
-      const whopCheckoutConfigurationId = getWhopCheckoutConfigurationIdFromPayment(payment);
-
-      if (checkoutContextId) {
-        await convex.mutation(api.payments.attachPaymentIdToCheckoutConfiguration, {
-          checkoutConfigurationId: checkoutContextId,
-          paymentId,
-        });
-      } else if (whopCheckoutConfigurationId) {
-        await convex.mutation(api.payments.attachPaymentIdToWhopCheckoutConfiguration, {
-          whopCheckoutConfigurationId,
-          paymentId,
-        });
-      }
-
-      if (checkoutContextId || whopCheckoutConfigurationId) {
-        status = await convex.query(api.payments.getSubmissionPaymentStatusForUser, {
-          paymentId,
-          viewerUserId,
-        });
-      }
-    }
 
     if (!status) {
       return NextResponse.json(
         {
-          paymentId,
-          status: "pending",
+          attemptId: submissionPaymentId,
+          status: "failed",
           submissionCreated: false,
           submissionId: null,
-          error: null,
+          error: "Payment attempt not found.",
         },
         { status: 200 },
       );
     }
 
     if (status.status === "pending") {
-      const paymentIdForLookup = status.paymentId;
+      if (status.expiresAt !== null && Date.now() > status.expiresAt) {
+        await convex.mutation(api.payments.markSubmissionPaymentFailed, {
+          submissionPaymentId: submissionPaymentId as never,
+          errorMessage: "Checkout session expired.",
+        });
+      } else {
+        let payment: unknown | null = null;
 
-      if (paymentIdForLookup.startsWith("pending:")) {
-        const whopCheckoutConfigurationId = paymentIdForLookup.slice("pending:".length);
-        const companyId = getPlatformCompanyId();
-
-        if (companyId && whopCheckoutConfigurationId) {
-          const payments = (whopSdk as {
-            payments: { list: (input: unknown) => AsyncIterable<unknown> };
-          }).payments.list({
-            company_id: companyId,
-            statuses: ["paid", "pending", "open", "void", "uncollectible", "unresolved"],
-            first: 100,
-            direction: "desc",
-            order: "created_at",
-          });
-
-          for await (const payment of payments) {
-            const paymentWhopCheckoutId = getWhopCheckoutConfigurationIdFromPayment(payment);
-            if (paymentWhopCheckoutId !== whopCheckoutConfigurationId) {
-              continue;
-            }
-
-            const resolvedPaymentId = getWhopPaymentId(payment);
-            if (!resolvedPaymentId) {
-              break;
-            }
-
-            await convex.mutation(api.payments.attachPaymentIdToWhopCheckoutConfiguration, {
-              whopCheckoutConfigurationId,
-              paymentId: resolvedPaymentId,
+        if (status.whopPaymentId) {
+          payment = await (whopSdk as {
+            payments: { retrieve: (id: string) => Promise<unknown> };
+          }).payments.retrieve(status.whopPaymentId);
+        } else if (status.whopCheckoutConfigurationId) {
+          const companyId = getPlatformCompanyId();
+          if (companyId) {
+            const payments = (whopSdk as {
+              payments: { list: (input: unknown) => AsyncIterable<unknown> };
+            }).payments.list({
+              company_id: companyId,
+              statuses: ["draft", "open", "pending", "paid", "void", "uncollectible", "unresolved"],
+              direction: "desc",
+              order: "created_at",
             });
 
-            const resolvedStatus = extractWhopPaymentStatus(payment);
-            if (resolvedStatus === "paid") {
-              await completePaymentAndNotify(convex, resolvedPaymentId);
-            }
+            for await (const listedPayment of payments) {
+              const listedAttemptId = getSubmissionPaymentIdFromPayment(listedPayment);
+              const listedCheckoutId = getWhopCheckoutConfigurationIdFromPayment(listedPayment);
 
-            if (resolvedStatus === "failed" || resolvedStatus === "void") {
-              await convex.mutation(api.payments.markSubmissionPaymentFailed, {
-                paymentId: resolvedPaymentId,
-                errorMessage: "Payment failed before confirmation.",
+              if (
+                listedAttemptId !== submissionPaymentId &&
+                listedCheckoutId !== status.whopCheckoutConfigurationId
+              ) {
+                continue;
+              }
+
+              const resolvedPaymentId = getWhopPaymentId(listedPayment);
+              if (!resolvedPaymentId) {
+                continue;
+              }
+
+              await convex.mutation(api.payments.attachWhopPaymentIdToSubmissionPayment, {
+                submissionPaymentId: submissionPaymentId as never,
+                whopPaymentId: resolvedPaymentId,
+                whopCheckoutConfigurationId: status.whopCheckoutConfigurationId,
               });
+              payment = listedPayment;
+              break;
             }
+          }
+        }
 
-            break;
+        if (payment) {
+          const paymentStatus = extractWhopPaymentStatus(payment);
+
+          if (paymentStatus === "paid") {
+            await completePaymentAndNotify(convex, submissionPaymentId);
+          }
+
+          if (paymentStatus === "failed" || paymentStatus === "void") {
+            await convex.mutation(api.payments.markSubmissionPaymentFailed, {
+              submissionPaymentId: submissionPaymentId as never,
+              errorMessage: "Payment was not successful.",
+            });
           }
         }
       }
 
-      if (paymentIdForLookup.startsWith("pay_")) {
-        const payment = await (whopSdk as {
-          payments: { retrieve: (id: string) => Promise<unknown> };
-        }).payments.retrieve(paymentIdForLookup);
-        const paymentStatus = extractWhopPaymentStatus(payment);
-
-        if (paymentStatus === "paid") {
-          await completePaymentAndNotify(convex, paymentIdForLookup);
-        }
-
-        if (paymentStatus === "failed" || paymentStatus === "void") {
-          await convex.mutation(api.payments.markSubmissionPaymentFailed, {
-            paymentId: paymentIdForLookup,
-            errorMessage: "Payment failed before confirmation.",
-          });
-        }
-      }
-
       status = await convex.query(api.payments.getSubmissionPaymentStatusForUser, {
-        paymentId,
+        submissionPaymentId: submissionPaymentId as never,
         viewerUserId,
       });
     }
 
     return NextResponse.json(
       {
-        paymentId,
+        attemptId: submissionPaymentId,
         status: status?.status ?? "pending",
         submissionCreated: Boolean(status?.submissionId),
         submissionId: status?.submissionId ?? null,
@@ -202,7 +176,7 @@ export async function GET(request: NextRequest) {
       event: "whop.payment.status_check_failed",
       status: 500,
       experienceId,
-      paymentId,
+      submissionPaymentId,
       errorMessage: getSafeErrorMessage(error),
     });
 

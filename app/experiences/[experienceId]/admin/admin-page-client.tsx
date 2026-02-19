@@ -72,6 +72,8 @@ const defaultFormValues: RequestTypeFormValues = {
   allowAttachments: false,
 };
 
+const MIN_RESPONSE_CHARACTERS = 4;
+
 function getErrorMessage(error: unknown, fallback: string) {
   void error;
   return fallback;
@@ -687,8 +689,8 @@ export default function AdminPageClient({
       return;
     }
 
-    if (answerText.trim().length < 8) {
-      setAnswerError("Response must be at least 8 characters.");
+    if (answerText.trim().length < MIN_RESPONSE_CHARACTERS) {
+      setAnswerError(`Response must be at least ${MIN_RESPONSE_CHARACTERS} characters.`);
       return;
     }
 

@@ -11,7 +11,7 @@ const actionSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("answer"),
     submissionId: z.string().min(1),
-    responseText: z.string().min(1),
+    responseText: z.string().trim().min(4),
     whopDevUserToken: z.string().optional(),
   }),
   z.object({

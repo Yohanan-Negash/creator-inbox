@@ -41,6 +41,8 @@ type AnswerSubmissionDialogProps = {
   onClose: () => void;
 };
 
+const MIN_RESPONSE_CHARACTERS = 4;
+
 export function AnswerSubmissionDialog({
   experienceId,
   devUserToken,
@@ -111,13 +113,18 @@ export function AnswerSubmissionDialog({
           <div className="grid gap-1.5">
             <p className="text-xs font-medium">Creator response</p>
             {canAnswer ? (
-              <Textarea
-                value={answerText}
-                onChange={(event) => onAnswerTextChange(event.target.value)}
-                className="min-h-28"
-                placeholder="Write a clear response for this submission..."
-                disabled={answerPending}
-              />
+              <>
+                <Textarea
+                  value={answerText}
+                  onChange={(event) => onAnswerTextChange(event.target.value)}
+                  className="min-h-28"
+                  placeholder="Write a clear response for this submission..."
+                  disabled={answerPending}
+                />
+                <p className="text-[11px] text-zinc-500">
+                  Minimum {MIN_RESPONSE_CHARACTERS} characters.
+                </p>
+              </>
             ) : (
               <div className="min-h-28 whitespace-pre-wrap rounded-none border border-zinc-200 p-3 text-xs text-zinc-700">
                 {selectedSubmission?.responseText?.trim() || "No response available."}
@@ -134,7 +141,7 @@ export function AnswerSubmissionDialog({
               <Button
                 type="submit"
                 className="w-full sm:w-auto"
-                disabled={answerPending || answerText.trim().length < 8}
+                disabled={answerPending || answerText.trim().length < MIN_RESPONSE_CHARACTERS}
               >
                 {answerPending ? "Sending..." : "Send response"}
               </Button>

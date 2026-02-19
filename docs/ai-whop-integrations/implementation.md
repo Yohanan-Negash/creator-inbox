@@ -25,25 +25,26 @@
 3. Reads request-type quote from Convex.
 4. If request type price is `0`, creates the submission immediately and returns `submissionCreated: true` (no checkout).
 5. For paid request types, resolves Whop company and product context from `experiences.retrieve`.
-6. Creates a Whop checkout link (`checkoutConfigurations.create`) for a one-time USD charge.
-7. Stores pending submission payment context in Convex keyed by checkout configuration id.
-8. Returns `purchaseUrl` so frontend redirects user to hosted checkout.
+6. Creates a pending submission payment attempt in Convex first and uses the Convex `_id` as immutable `attemptId`.
+7. Creates a Whop checkout link (`checkoutConfigurations.create`) for a one-time USD charge, embedding `submissionPaymentId` metadata.
+8. Finalizes the attempt with `whopCheckoutConfigurationId` and returns `attemptId` + checkout session info.
 
 ### `/api/whop/payments/submission-status`
 
 1. Verifies token + access for the experience.
-2. Reads user-scoped payment row from Convex.
-3. Reconciles with Whop `payments.retrieve` or `payments.list` and finalizes or fails if terminal.
-4. On first successful submission creation only, queues an admin-targeted Whop notification.
-5. Returns submission creation status for client polling.
+2. Reads a user-scoped payment attempt from Convex via immutable `attemptId`.
+3. Reconciles with Whop `payments.retrieve` or `payments.list`; links `whopPaymentId` onto the same attempt.
+4. Finalizes or fails the attempt idempotently if provider state is terminal.
+5. On first successful submission creation only, queues an admin-targeted Whop notification.
+6. Returns submission creation status for client polling.
 
 ### `/api/whop/payments/webhook`
 
 1. Accepts Whop payment webhook payloads (optionally guarded by `WHOP_WEBHOOK_SECRET`).
 2. Resolves payment id from payload.
 3. Retrieves canonical payment status from Whop.
-4. Maps `paymentId` back to pending checkout context using metadata checkout configuration id.
-5. Finalizes pending submission or marks payment failed idempotently.
+4. Resolves `submissionPaymentId` from payment metadata (primary) with checkout-id fallbacks.
+5. Links `whopPaymentId` onto the attempt and finalizes or fails idempotently.
 6. On first successful submission creation only, queues an admin-targeted Whop notification.
 
 ### `/api/whop/payments/refund-submission`

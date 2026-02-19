@@ -84,7 +84,7 @@ export default function ExperiencePageClient({
     downloadUrl: string | null;
   } | null>(null);
   const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
-  const [checkoutPaymentId, setCheckoutPaymentId] = useState<string | null>(null);
+  const [checkoutAttemptId, setCheckoutAttemptId] = useState<string | null>(null);
   const [checkoutReturnUrl, setCheckoutReturnUrl] = useState<string | null>(null);
   const [submissionsPage, setSubmissionsPage] = useState(1);
   const [submissionsPagePending, setSubmissionsPagePending] = useState(false);
@@ -397,9 +397,9 @@ export default function ExperiencePageClient({
       });
 
       const createPayload = (await createResponse.json()) as {
+        attemptId?: string;
         checkoutConfigurationId?: string;
         planId?: string;
-        paymentId?: string;
         purchaseUrl?: string;
         redirectUrl?: string;
         status?: string;
@@ -427,7 +427,7 @@ export default function ExperiencePageClient({
       }
 
       setCheckoutSessionId(createPayload.checkoutConfigurationId);
-      setCheckoutPaymentId(createPayload.paymentId ?? null);
+      setCheckoutAttemptId(createPayload.attemptId ?? null);
       setCheckoutReturnUrl(createPayload.redirectUrl ?? null);
       setPendingAttachment(null);
       setAttachmentError(null);
@@ -441,7 +441,7 @@ export default function ExperiencePageClient({
 
   function resetCheckoutState() {
     setCheckoutSessionId(null);
-    setCheckoutPaymentId(null);
+    setCheckoutAttemptId(null);
     setCheckoutReturnUrl(null);
   }
 
@@ -569,7 +569,7 @@ export default function ExperiencePageClient({
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function handleCheckoutComplete(_planId: string, _receiptId?: string) {
-    if (!checkoutPaymentId) {
+    if (!checkoutAttemptId) {
       setSubmitDialogOpen(false);
       resetCheckoutState();
       setActiveView("submissions");
@@ -584,7 +584,7 @@ export default function ExperiencePageClient({
       try {
         const statusUrl = new URL("/api/whop/payments/submission-status", window.location.origin);
         statusUrl.searchParams.set("experienceId", experienceId);
-        statusUrl.searchParams.set("paymentId", checkoutPaymentId);
+        statusUrl.searchParams.set("attemptId", checkoutAttemptId);
         if (devUserToken) {
           statusUrl.searchParams.set("whop-dev-user-token", devUserToken);
         }

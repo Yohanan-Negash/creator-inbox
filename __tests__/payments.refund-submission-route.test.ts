@@ -67,7 +67,7 @@ describe("POST /api/whop/payments/refund-submission", () => {
     mockConvexQuery.mockResolvedValueOnce({
       submissionId: "sub_1",
       status: "pending",
-      paymentId: null,
+      whopPaymentId: null,
     });
     mockConvexMutation.mockResolvedValueOnce({
       _id: "sub_1",
@@ -106,7 +106,7 @@ describe("POST /api/whop/payments/refund-submission", () => {
     mockConvexQuery.mockResolvedValueOnce({
       submissionId: "sub_1",
       status: "refunded",
-      paymentId: "pay_1",
+      whopPaymentId: "pay_1",
     });
 
     const { POST } = await import("../app/api/whop/payments/refund-submission/route");
@@ -131,7 +131,7 @@ describe("POST /api/whop/payments/refund-submission", () => {
     mockConvexQuery.mockResolvedValueOnce({
       submissionId: "sub_1",
       status: "pending",
-      paymentId: "pay_1",
+      whopPaymentId: "pay_1",
     });
     mockPaymentsRetrieve.mockResolvedValueOnce({
       id: "pay_1",

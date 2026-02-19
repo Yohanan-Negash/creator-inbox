@@ -83,7 +83,7 @@ async function finalizeSubmissionRefundWithRetry(
   convex: ReturnType<typeof getConvexServerClient>,
   submissionId: string,
   viewerUserId: string,
-  paymentId: string | null,
+  whopPaymentId: string | null,
 ) {
   const backoffMs = [200, 500] as const;
   let lastError: unknown = null;
@@ -93,7 +93,7 @@ async function finalizeSubmissionRefundWithRetry(
       return await convex.mutation(api.payments.finalizeSubmissionRefund, {
         submissionId: submissionId as never,
         viewerUserId,
-        paymentId: paymentId ?? undefined,
+        whopPaymentId: whopPaymentId ?? undefined,
       });
     } catch (error) {
       lastError = error;
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
 
     let whopRefundApplied = false;
 
-    if (context.paymentId?.startsWith("pay_")) {
+    if (context.whopPaymentId) {
       const paymentsClient = (whopSdk as {
         payments: {
           retrieve: (id: string) => Promise<unknown>;
@@ -157,17 +157,17 @@ export async function POST(request: NextRequest) {
         };
       }).payments;
 
-      const paymentBefore = await paymentsClient.retrieve(context.paymentId);
+      const paymentBefore = await paymentsClient.retrieve(context.whopPaymentId);
       if (isWhopPaymentRefunded(paymentBefore)) {
         whopRefundApplied = true;
       } else {
         try {
-          await paymentsClient.refund(context.paymentId);
+          await paymentsClient.refund(context.whopPaymentId);
           whopRefundApplied = true;
         } catch (error) {
           const message = getSafeErrorMessage(error).toLowerCase();
           if (message.includes("cannot be refunded") || message.includes("already refunded")) {
-            const paymentAfter = await paymentsClient.retrieve(context.paymentId);
+            const paymentAfter = await paymentsClient.retrieve(context.whopPaymentId);
             if (isWhopPaymentRefunded(paymentAfter)) {
               whopRefundApplied = true;
             } else {
@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
         convex,
         parsed.data.submissionId,
         viewerUserId,
-        context.paymentId,
+        context.whopPaymentId,
       );
     } catch (error) {
       if (whopRefundApplied) {
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
           method: "POST",
           event: "whop.payment.refund_finalize_failed_after_whop_success",
           submissionId: parsed.data.submissionId,
-          paymentId: context.paymentId,
+          whopPaymentId: context.whopPaymentId,
           errorMessage: getSafeErrorMessage(error),
         });
       }

@@ -10,6 +10,7 @@ import {
 } from "../lib/submissions/constants";
 
 export const MIN_SUBMISSION_TEXT_LENGTH = 5;
+export const MIN_RESPONSE_TEXT_LENGTH = 4;
 
 export type SubmissionAttachmentSnapshot = {
   storageId: Id<"_storage">;
@@ -23,6 +24,12 @@ export function ensureValidSubmissionText(submissionText: string) {
     throw new Error(
       `Submission text must be at least ${MIN_SUBMISSION_TEXT_LENGTH} characters.`,
     );
+  }
+}
+
+function ensureValidResponseText(responseText: string) {
+  if (responseText.trim().length < MIN_RESPONSE_TEXT_LENGTH) {
+    throw new Error(`Response text must be at least ${MIN_RESPONSE_TEXT_LENGTH} characters.`);
   }
 }
 
@@ -626,6 +633,8 @@ export const answerSubmission = mutation({
     responseText: v.string(),
   },
   handler: async (ctx, args) => {
+    ensureValidResponseText(args.responseText);
+
     const existing = await ctx.db.get(args.submissionId);
 
     if (!existing) {

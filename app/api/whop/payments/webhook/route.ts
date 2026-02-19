@@ -6,6 +6,7 @@ import { getConvexServerClient } from "@/lib/convex-server";
 import {
   extractWhopPaymentStatus,
   getSubmissionCheckoutContextIdFromPayment,
+  getSubmissionPaymentIdFromPayment,
   getWhopCheckoutConfigurationIdFromPayment,
   getWhopPaymentId,
 } from "@/lib/whop-payments";
@@ -72,9 +73,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid webhook signature." }, { status: 401 });
     }
 
-    const paymentId = getWhopPaymentId(payload);
+    const whopPaymentId = getWhopPaymentId(payload);
 
-    if (!paymentId) {
+    if (!whopPaymentId) {
       logger.info("Payment webhook ignored (no payment id)", {
         route,
         method: "POST",
@@ -86,39 +87,58 @@ export async function POST(request: NextRequest) {
     const convex = getConvexServerClient();
     const payment = await (whopSdk as {
       payments: { retrieve: (id: string) => Promise<unknown> };
-    }).payments.retrieve(paymentId);
+    }).payments.retrieve(whopPaymentId);
 
     const status = extractWhopPaymentStatus(payment);
     const checkoutContextId = getSubmissionCheckoutContextIdFromPayment(payment);
     const whopCheckoutConfigurationId = getWhopCheckoutConfigurationIdFromPayment(payment);
+    let submissionPaymentId = getSubmissionPaymentIdFromPayment(payment);
 
     try {
-      if (checkoutContextId) {
-        await convex.mutation(api.payments.attachPaymentIdToCheckoutConfiguration, {
+      if (submissionPaymentId) {
+        const attached = await convex.mutation(api.payments.attachWhopPaymentIdToSubmissionPayment, {
+          submissionPaymentId: submissionPaymentId as never,
+          whopPaymentId,
+          whopCheckoutConfigurationId: whopCheckoutConfigurationId ?? undefined,
+        });
+        submissionPaymentId = String((attached as { _id?: string } | null)?._id ?? submissionPaymentId);
+      } else if (checkoutContextId) {
+        const attached = await convex.mutation(api.payments.attachPaymentIdToCheckoutConfiguration, {
           checkoutConfigurationId: checkoutContextId,
-          paymentId,
+          whopPaymentId,
         });
+        submissionPaymentId = String((attached as { _id?: string } | null)?._id ?? "");
       } else if (whopCheckoutConfigurationId) {
-        await convex.mutation(api.payments.attachPaymentIdToWhopCheckoutConfiguration, {
+        const attached = await convex.mutation(api.payments.attachPaymentIdToWhopCheckoutConfiguration, {
           whopCheckoutConfigurationId,
-          paymentId,
+          whopPaymentId,
         });
+        submissionPaymentId = String((attached as { _id?: string } | null)?._id ?? "");
       }
     } catch (error) {
-      logger.info("Payment webhook could not attach checkout mapping", {
+      logger.error("Payment webhook could not attach checkout mapping", {
         route,
         method: "POST",
         event: "whop.payment.webhook_attach_mapping_failed",
+        submissionPaymentId: submissionPaymentId ?? null,
         checkoutConfigurationId: checkoutContextId ?? null,
         whopCheckoutConfigurationId: whopCheckoutConfigurationId ?? null,
-        paymentId,
+        whopPaymentId,
         errorMessage: getSafeErrorMessage(error),
       });
+
+      if (status === "paid" || status === "failed" || status === "void") {
+        throw error;
+      }
+    }
+
+    if ((status === "paid" || status === "failed" || status === "void") && !submissionPaymentId) {
+      throw new Error("Payment webhook missing submissionPaymentId and checkout mapping context.");
     }
 
     if (status === "paid") {
       const completion = await convex.mutation(api.payments.completeSubmissionPayment, {
-        paymentId,
+        submissionPaymentId: submissionPaymentId as never,
       });
 
       if (completion.created) {
@@ -130,22 +150,22 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      return NextResponse.json({ received: true, paymentId, status: "paid" }, { status: 200 });
+      return NextResponse.json({ received: true, whopPaymentId, status: "paid" }, { status: 200 });
     }
 
-    if (status === "failed" || status === "void") {
+    if ((status === "failed" || status === "void") && submissionPaymentId) {
       await convex.mutation(api.payments.markSubmissionPaymentFailed, {
-        paymentId,
+        submissionPaymentId: submissionPaymentId as never,
         errorMessage: "Payment was not successful.",
       });
 
       return NextResponse.json(
-        { received: true, paymentId, status: "failed" },
+        { received: true, whopPaymentId, status: "failed" },
         { status: 200 },
       );
     }
 
-    return NextResponse.json({ received: true, paymentId, status: "pending" }, { status: 200 });
+    return NextResponse.json({ received: true, whopPaymentId, status: "pending" }, { status: 200 });
   } catch (error) {
     logger.error("Payment webhook processing failed", {
       route,
