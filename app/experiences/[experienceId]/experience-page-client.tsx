@@ -97,7 +97,6 @@ export default function ExperiencePageClient({
   );
   const [submissionsCursorHistory, setSubmissionsCursorHistory] = useState<Array<string | null>>([]);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<Id<"submissions"> | null>(null);
-  const [readSubmissionIds, setReadSubmissionIds] = useState<string[]>([]);
   const [requestTypes, setRequestTypes] = useState<MemberRequestType[] | undefined>(() =>
     initialData.access?.has_access ? (initialData.requestTypes ?? []) : undefined,
   );
@@ -107,7 +106,6 @@ export default function ExperiencePageClient({
   const [memberDataLoading, setMemberDataLoading] = useState(false);
 
   const viewerUserId = data?.user?.id ?? "";
-  const readSubmissionIdSet = useMemo(() => new Set(readSubmissionIds), [readSubmissionIds]);
 
   const selectedSubmission = useMemo(() => {
     if (!submissions || !selectedSubmissionId) {
@@ -116,19 +114,6 @@ export default function ExperiencePageClient({
 
     return submissions.find((item) => item._id === selectedSubmissionId) ?? null;
   }, [selectedSubmissionId, submissions]);
-
-  const unreadAnsweredCount = useMemo(() => {
-    if (!submissions) {
-      return 0;
-    }
-
-    return submissions.filter(
-      (item) =>
-        item.status === "answered" &&
-        Boolean(item.responseText) &&
-        !readSubmissionIdSet.has(String(item._id)),
-    ).length;
-  }, [readSubmissionIdSet, submissions]);
 
   useEffect(() => {
     setData(toWhopResponse(initialData));
@@ -154,39 +139,6 @@ export default function ExperiencePageClient({
     setSubmissionsPageError(null);
     setSubmissionsNextCursor(null);
   }, [initialData]);
-
-  useEffect(() => {
-    if (!viewerUserId) {
-      return;
-    }
-
-    const storageKey = `submission-reads:${experienceId}:${viewerUserId}`;
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      if (!raw) {
-        return;
-      }
-      const parsed = JSON.parse(raw) as string[];
-      if (Array.isArray(parsed)) {
-        setReadSubmissionIds(parsed);
-      }
-    } catch {
-      // no-op
-    }
-  }, [experienceId, viewerUserId]);
-
-  useEffect(() => {
-    if (!viewerUserId) {
-      return;
-    }
-
-    const storageKey = `submission-reads:${experienceId}:${viewerUserId}`;
-    try {
-      window.localStorage.setItem(storageKey, JSON.stringify(readSubmissionIds));
-    } catch {
-      // no-op
-    }
-  }, [experienceId, readSubmissionIds, viewerUserId]);
 
   useEffect(() => {
     if (!submissions?.length) {
@@ -631,15 +583,6 @@ export default function ExperiencePageClient({
 
   function openSubmissionDetails(submissionId: Id<"submissions">) {
     setSelectedSubmissionId(submissionId);
-    const submission = submissions?.find((item) => item._id === submissionId);
-    if (
-      submission &&
-      submission.status === "answered" &&
-      submission.responseText &&
-      !readSubmissionIdSet.has(String(submissionId))
-    ) {
-      setReadSubmissionIds((current) => [...current, String(submissionId)]);
-    }
   }
 
   const hasAccess = data?.access?.has_access === true;
@@ -712,8 +655,6 @@ export default function ExperiencePageClient({
             submissions={submissions}
             selectedSubmissionId={selectedSubmissionId}
             selectedSubmission={selectedSubmission}
-            readSubmissionIds={readSubmissionIds}
-            unreadAnsweredCount={unreadAnsweredCount}
             submissionsPage={submissionsPage}
             submissionsPagePending={submissionsPagePending}
             submissionsPageError={submissionsPageError}

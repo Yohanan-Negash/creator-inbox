@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Download, Loader2, Paperclip } from "lucide-react";
 import {
@@ -50,8 +49,6 @@ type SubmissionsViewProps = {
   submissions: SubmissionItem[] | undefined;
   selectedSubmissionId: Id<"submissions"> | null;
   selectedSubmission: SubmissionItem | null;
-  readSubmissionIds: string[];
-  unreadAnsweredCount: number;
   submissionsPage: number;
   submissionsPagePending: boolean;
   submissionsPageError: string | null;
@@ -71,8 +68,6 @@ export function SubmissionsView({
   submissions,
   selectedSubmissionId,
   selectedSubmission,
-  readSubmissionIds,
-  unreadAnsweredCount,
   submissionsPage,
   submissionsPagePending,
   submissionsPageError,
@@ -82,7 +77,6 @@ export function SubmissionsView({
   onGoToPreviousSubmissionsPage,
   onGoToNextSubmissionsPage,
 }: SubmissionsViewProps) {
-  const readSubmissionIdSet = useMemo(() => new Set(readSubmissionIds), [readSubmissionIds]);
   const getAttachmentDownloadHref = (submissionId: string) => {
     const path = `/api/whop/experiences/${encodeURIComponent(experienceId)}/submissions/${encodeURIComponent(
       submissionId,
@@ -121,9 +115,6 @@ export function SubmissionsView({
             <span className="rounded-none border border-zinc-200 px-2 py-1 text-zinc-600">
               {submissions?.length ?? 0} on this page
             </span>
-            <span className="rounded-none border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">
-              {unreadAnsweredCount} unread on this page
-            </span>
           </div>
         </CardContent>
       </Card>
@@ -144,10 +135,6 @@ export function SubmissionsView({
           <div className="grid gap-3 lg:hidden">
             {submissions.map((submission) => {
               const rowId = String(submission._id);
-              const isUnread =
-                submission.status === "answered" &&
-                Boolean(submission.responseText) &&
-                !readSubmissionIdSet.has(rowId);
               const isSelected = selectedSubmissionId === submission._id;
 
               return (
@@ -161,11 +148,6 @@ export function SubmissionsView({
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-medium text-zinc-900">{submission.requestTypeLabel}</p>
-                    {isUnread ? (
-                      <span className="rounded-none border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">
-                        Unread
-                      </span>
-                    ) : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
                     <span
@@ -195,27 +177,16 @@ export function SubmissionsView({
                 <TableBody>
                   {submissions.map((submission) => {
                     const rowId = String(submission._id);
-                    const isUnread =
-                      submission.status === "answered" &&
-                      Boolean(submission.responseText) &&
-                      !readSubmissionIdSet.has(rowId);
                     return (
                       <TableRow
                         key={rowId}
                         className={`cursor-pointer ${
                           selectedSubmissionId === submission._id ? "bg-muted/50" : ""
-                        } ${isUnread ? "font-medium" : ""}`}
+                        }`}
                         onClick={() => onOpenSubmissionDetails(submission._id)}
                       >
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className="line-clamp-1">{submission.requestTypeLabel}</span>
-                            {isUnread ? (
-                              <span className="rounded-none border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">
-                                Unread
-                              </span>
-                            ) : null}
-                          </div>
+                          <span className="line-clamp-1">{submission.requestTypeLabel}</span>
                         </TableCell>
                         <TableCell>
                           <span
