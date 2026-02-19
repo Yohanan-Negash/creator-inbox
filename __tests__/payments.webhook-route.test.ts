@@ -77,7 +77,9 @@ describe("POST /api/whop/payments/webhook", () => {
     mockPaymentsRetrieve.mockResolvedValue({
       id: "pay_123",
       status: "paid",
+      checkout_configuration_id: "ch_123",
       metadata: {
+        submissionPaymentId: "spay_123",
         checkoutConfigurationId: "8e624478-53e0-4ee8-9976-5a78aac7e401",
       },
     });
@@ -110,11 +112,12 @@ describe("POST /api/whop/payments/webhook", () => {
     expect(payload.status).toBe("paid");
     expect(mockConvexMutation).toHaveBeenCalledTimes(2);
     expect(mockConvexMutation.mock.calls[0][1]).toEqual({
-      checkoutConfigurationId: "8e624478-53e0-4ee8-9976-5a78aac7e401",
-      paymentId: "pay_123",
+      submissionPaymentId: "spay_123",
+      whopPaymentId: "pay_123",
+      whopCheckoutConfigurationId: "ch_123",
     });
     expect(mockConvexMutation.mock.calls[1][1]).toEqual({
-      paymentId: "pay_123",
+      submissionPaymentId: "spay_123",
     });
     expect(mockNotifyAdminSubmissionCreated).toHaveBeenCalledWith({
       experienceId: "exp_1",

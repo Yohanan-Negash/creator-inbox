@@ -15,6 +15,8 @@ const createSubmissionPaymentSchema = z.object({
   whopDevUserToken: z.string().optional(),
 });
 
+const PENDING_CHECKOUT_TTL_MS = 30 * 60 * 1000;
+
 function clampWhopTitle(value: string) {
   return value.trim().slice(0, 40);
 }
@@ -139,7 +141,7 @@ export async function POST(request: NextRequest) {
         {
           status: "paid",
           submissionCreated: true,
-          paymentId: null,
+          attemptId: null,
           checkoutConfigurationId: null,
           planId: null,
           purchaseUrl: null,
@@ -156,39 +158,35 @@ export async function POST(request: NextRequest) {
       viewerUserId,
       submissionText: parsed.data.submissionText,
       attachmentToken: parsed.data.attachmentToken,
+      maxAgeMs: PENDING_CHECKOUT_TTL_MS,
     });
 
-    if (existingPending) {
-      const whopCheckoutConfigId = existingPending.paymentId.startsWith("pending:")
-        ? existingPending.paymentId.slice("pending:".length)
-        : "";
+    if (existingPending?.whopCheckoutConfigurationId) {
+      logger.info("Returning existing pending checkout (idempotent)", {
+        ...baseLog,
+        event: "whop.payment.idempotent_hit",
+        viewerUserId,
+        experienceId: parsed.data.experienceId,
+        checkoutConfigurationId: existingPending.whopCheckoutConfigurationId,
+        submissionPaymentId: String(existingPending.submissionPaymentId),
+      });
 
-      if (whopCheckoutConfigId) {
-        logger.info("Returning existing pending checkout (idempotent)", {
-          ...baseLog,
-          event: "whop.payment.idempotent_hit",
-          viewerUserId,
-          experienceId: parsed.data.experienceId,
-          checkoutConfigurationId: whopCheckoutConfigId,
-        });
-
-        return NextResponse.json(
-          {
-            checkoutConfigurationId: whopCheckoutConfigId,
-            planId: "",
-            paymentId: existingPending.paymentId,
-            purchaseUrl: "",
-            redirectUrl: buildRedirectUrl(
-              request,
-              parsed.data.experienceId,
-              parsed.data.whopDevUserToken,
-            ),
-            status: "pending",
-            submissionCreated: false,
-          },
-          { status: 200 },
-        );
-      }
+      return NextResponse.json(
+        {
+          attemptId: String(existingPending.submissionPaymentId),
+          checkoutConfigurationId: existingPending.whopCheckoutConfigurationId,
+          planId: "",
+          purchaseUrl: "",
+          redirectUrl: buildRedirectUrl(
+            request,
+            parsed.data.experienceId,
+            parsed.data.whopDevUserToken,
+          ),
+          status: "pending",
+          submissionCreated: false,
+        },
+        { status: 200 },
+      );
     }
 
     const { companyId, productId } = getPlatformIds();
@@ -206,6 +204,23 @@ export async function POST(request: NextRequest) {
       platformCompanyId: `${companyId.slice(0, 7)}***`,
       creatorCompanyId: creatorCompanyId ? `${creatorCompanyId.slice(0, 7)}***` : "none",
     });
+
+    const preCheckout = await convex.mutation(api.payments.upsertSubmissionPayment, {
+      checkoutConfigurationId: checkoutContextId,
+      experienceId: parsed.data.experienceId,
+      requestTypeId: parsed.data.requestTypeId as never,
+      viewerUserId,
+      viewerUserName,
+      submissionText: parsed.data.submissionText,
+      amountUsd: quote.price,
+      attachmentToken: parsed.data.attachmentToken,
+      expiresAt: Date.now() + PENDING_CHECKOUT_TTL_MS,
+    });
+
+    const submissionPaymentId = String((preCheckout as { _id?: string } | null)?._id ?? "");
+    if (!submissionPaymentId) {
+      throw new Error("Failed to create a submission payment attempt.");
+    }
 
     let checkoutConfiguration: unknown;
     try {
@@ -236,6 +251,7 @@ export async function POST(request: NextRequest) {
         metadata: {
           source: "creator-inbox",
           checkoutFlow: "submission",
+          submissionPaymentId,
           checkoutConfigurationId: checkoutContextId,
           experienceId: parsed.data.experienceId,
           requestTypeId: String(quote.requestTypeId),
@@ -245,6 +261,13 @@ export async function POST(request: NextRequest) {
         },
       });
     } catch (error) {
+      await convex.mutation(api.payments.markSubmissionPaymentFailed, {
+        submissionPaymentId: submissionPaymentId as never,
+        errorMessage: "Whop checkout creation failed.",
+      }).catch(() => {
+        // Best-effort cleanup.
+      });
+
       const message = getSafeErrorMessage(error);
 
       if (message.toLowerCase().includes("not authorized")) {
@@ -274,17 +297,9 @@ export async function POST(request: NextRequest) {
       parsed.data.whopDevUserToken,
     );
 
-    await convex.mutation(api.payments.upsertSubmissionPayment, {
-      paymentId: `pending:${checkoutConfigurationId}`,
+    await convex.mutation(api.payments.finalizeCheckoutConfiguration, {
+      submissionPaymentId: submissionPaymentId as never,
       whopCheckoutConfigurationId: checkoutConfigurationId,
-      checkoutConfigurationId: checkoutContextId,
-      experienceId: parsed.data.experienceId,
-      requestTypeId: parsed.data.requestTypeId as never,
-      viewerUserId,
-      viewerUserName,
-      submissionText: parsed.data.submissionText,
-      amountUsd: quote.price,
-      attachmentToken: parsed.data.attachmentToken,
     });
 
     logger.info("Submission checkout link created", {
@@ -296,13 +311,11 @@ export async function POST(request: NextRequest) {
       viewerUserId,
     });
 
-    const paymentId = `pending:${checkoutConfigurationId}`;
-
     return NextResponse.json(
       {
+        attemptId: submissionPaymentId,
         checkoutConfigurationId,
         planId,
-        paymentId,
         purchaseUrl,
         redirectUrl,
         status: "pending",

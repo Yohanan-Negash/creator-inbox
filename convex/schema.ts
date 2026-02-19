@@ -70,7 +70,7 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_request_type", ["requestTypeId"]),
   submissionPayments: defineTable({
-    paymentId: v.string(),
+    whopPaymentId: v.optional(v.string()),
     whopCheckoutConfigurationId: v.optional(v.string()),
     checkoutConfigurationId: v.optional(v.string()),
     experienceId: v.string(),
@@ -79,15 +79,20 @@ export default defineSchema({
     viewerUserName: v.string(),
     submissionText: v.string(),
     amountUsd: v.number(),
+    creatorIdSnapshot: v.string(),
+    requestTypeTitleSnapshot: v.string(),
+    responseWindowHoursSnapshot: v.number(),
+    allowAttachmentsSnapshot: v.boolean(),
     attachmentToken: v.optional(v.string()),
     status: submissionPaymentStatus,
     submissionId: v.optional(v.id("submissions")),
     createdAt: v.number(),
     updatedAt: v.number(),
+    expiresAt: v.optional(v.number()),
     refundedAt: v.optional(v.number()),
     lastError: v.optional(v.string()),
   })
-    .index("by_payment_id", ["paymentId"])
+    .index("by_whop_payment_id", ["whopPaymentId"])
     .index("by_whop_checkout_configuration_id", ["whopCheckoutConfigurationId"])
     .index("by_checkout_configuration_id", ["checkoutConfigurationId"])
     .index("by_submission_id", ["submissionId"])

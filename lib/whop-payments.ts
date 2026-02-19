@@ -166,6 +166,43 @@ export function getSubmissionCheckoutContextIdFromPayment(value: unknown): strin
   return null;
 }
 
+export function getSubmissionPaymentIdFromPayment(value: unknown): string | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  const metadata = record.metadata as Record<string, unknown> | undefined;
+  const fromMetadata = metadata?.submissionPaymentId;
+  if (typeof fromMetadata === "string" && fromMetadata.length > 0) {
+    return fromMetadata;
+  }
+
+  const payment = record.payment as Record<string, unknown> | undefined;
+  const paymentMetadata = payment?.metadata as Record<string, unknown> | undefined;
+  const fromPaymentMetadata = paymentMetadata?.submissionPaymentId;
+  if (typeof fromPaymentMetadata === "string" && fromPaymentMetadata.length > 0) {
+    return fromPaymentMetadata;
+  }
+
+  const data = record.data as Record<string, unknown> | undefined;
+  const dataMetadata = data?.metadata as Record<string, unknown> | undefined;
+  const fromDataMetadata = dataMetadata?.submissionPaymentId;
+  if (typeof fromDataMetadata === "string" && fromDataMetadata.length > 0) {
+    return fromDataMetadata;
+  }
+
+  const object = data?.object as Record<string, unknown> | undefined;
+  const objectMetadata = object?.metadata as Record<string, unknown> | undefined;
+  const fromObjectMetadata = objectMetadata?.submissionPaymentId;
+  if (typeof fromObjectMetadata === "string" && fromObjectMetadata.length > 0) {
+    return fromObjectMetadata;
+  }
+
+  return null;
+}
+
 export async function firstItemFromAsyncIterable<T>(
   iterable: AsyncIterable<T>,
 ): Promise<T | null> {

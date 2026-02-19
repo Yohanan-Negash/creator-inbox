@@ -3,7 +3,7 @@
 ## Member Components
 
 - `app/experiences/[experienceId]/experience-page-client.tsx`
-  - client-side interaction layer for submission flow, pagination, free-submit handling, and checkout polling
+  - client-side interaction layer for submission flow, pagination, free-submit handling, and checkout polling by immutable payment `attemptId`
 - `components/experiences/member/member-header.tsx`
   - view toggle and admin navigation button
 - `components/experiences/member/request-types-view.tsx`
