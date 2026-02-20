@@ -6,9 +6,6 @@ import { getWhopSdk } from "@/lib/whop";
 import { getConvexServerClient } from "@/lib/convex-server";
 import {
   extractWhopPaymentStatus,
-  getSubmissionPaymentIdFromPayment,
-  getWhopCheckoutConfigurationIdFromPayment,
-  getWhopPaymentId,
 } from "@/lib/whop-payments";
 import { notifyAdminSubmissionCreated } from "@/lib/whop-notifications";
 
@@ -32,15 +29,6 @@ async function completePaymentAndNotify(
   });
 
   return completion;
-}
-
-function getPlatformCompanyId() {
-  const companyId = process.env.WHOP_COMPANY_ID?.trim() ?? "";
-  if (!companyId || !companyId.startsWith("biz_")) {
-    return null;
-  }
-
-  return companyId;
 }
 
 export async function GET(request: NextRequest) {
@@ -92,52 +80,10 @@ export async function GET(request: NextRequest) {
           errorMessage: "Checkout session expired.",
         });
       } else {
-        let payment: unknown | null = null;
-
         if (status.whopPaymentId) {
-          payment = await (whopSdk as {
+          const payment = await (whopSdk as {
             payments: { retrieve: (id: string) => Promise<unknown> };
           }).payments.retrieve(status.whopPaymentId);
-        } else if (status.whopCheckoutConfigurationId) {
-          const companyId = getPlatformCompanyId();
-          if (companyId) {
-            const payments = (whopSdk as {
-              payments: { list: (input: unknown) => AsyncIterable<unknown> };
-            }).payments.list({
-              company_id: companyId,
-              statuses: ["draft", "open", "pending", "paid", "void", "uncollectible", "unresolved"],
-              direction: "desc",
-              order: "created_at",
-            });
-
-            for await (const listedPayment of payments) {
-              const listedAttemptId = getSubmissionPaymentIdFromPayment(listedPayment);
-              const listedCheckoutId = getWhopCheckoutConfigurationIdFromPayment(listedPayment);
-
-              if (
-                listedAttemptId !== submissionPaymentId &&
-                listedCheckoutId !== status.whopCheckoutConfigurationId
-              ) {
-                continue;
-              }
-
-              const resolvedPaymentId = getWhopPaymentId(listedPayment);
-              if (!resolvedPaymentId) {
-                continue;
-              }
-
-              await convex.mutation(api.payments.attachWhopPaymentIdToSubmissionPayment, {
-                submissionPaymentId: submissionPaymentId as never,
-                whopPaymentId: resolvedPaymentId,
-                whopCheckoutConfigurationId: status.whopCheckoutConfigurationId,
-              });
-              payment = listedPayment;
-              break;
-            }
-          }
-        }
-
-        if (payment) {
           const paymentStatus = extractWhopPaymentStatus(payment);
 
           if (paymentStatus === "paid") {

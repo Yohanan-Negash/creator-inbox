@@ -79,6 +79,7 @@ type MetricsSubmissionsSectionProps = {
   cashoutConfirmOpen: boolean;
   onSetCashoutConfirmOpen: (open: boolean) => void;
   cashoutPending: boolean;
+  cashoutError: string | null;
   refundPendingId: Id<"submissions"> | null;
   deletePendingId: Id<"submissions"> | null;
   submissionDeleteConfirmId: Id<"submissions"> | null;
@@ -103,6 +104,7 @@ export function MetricsSubmissionsSection({
   cashoutConfirmOpen,
   onSetCashoutConfirmOpen,
   cashoutPending,
+  cashoutError,
   refundPendingId,
   deletePendingId,
   submissionDeleteConfirmId,
@@ -197,7 +199,7 @@ export function MetricsSubmissionsSection({
                   const canRefundSubmission =
                     submission.status === "pending" &&
                     !submission.isWithinResponseWindow &&
-                    submission.amountUsd > 1;
+                    submission.amountUsd > 0;
 
                   return (
                     <div key={String(submission._id)} className="grid gap-2 border border-zinc-200 p-3">
@@ -306,7 +308,7 @@ export function MetricsSubmissionsSection({
                       const canRefundSubmission =
                         submission.status === "pending" &&
                         !submission.isWithinResponseWindow &&
-                        submission.amountUsd > 1;
+                        submission.amountUsd > 0;
                       return (
                         <TableRow
                           key={String(submission._id)}
@@ -468,6 +470,7 @@ export function MetricsSubmissionsSection({
                   </span>
                 </div>
               </div>
+              {cashoutError ? <p className="text-xs text-red-600">{cashoutError}</p> : null}
               <AlertDialogFooter>
                 <AlertDialogCancel disabled={cashoutPending}>Cancel</AlertDialogCancel>
                 <AlertDialogAction

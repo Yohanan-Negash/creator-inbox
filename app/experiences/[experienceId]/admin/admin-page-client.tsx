@@ -75,7 +75,9 @@ const defaultFormValues: RequestTypeFormValues = {
 const MIN_RESPONSE_CHARACTERS = 4;
 
 function getErrorMessage(error: unknown, fallback: string) {
-  void error;
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
   return fallback;
 }
 
@@ -142,6 +144,7 @@ export default function AdminPageClient({
   const [answerError, setAnswerError] = useState<string | null>(null);
   const [refundPendingId, setRefundPendingId] = useState<Id<"submissions"> | null>(null);
   const [refundError, setRefundError] = useState<string | null>(null);
+  const [refundSuccess, setRefundSuccess] = useState<string | null>(null);
   const [submissionDeletePendingId, setSubmissionDeletePendingId] = useState<
     Id<"submissions"> | null
   >(null);
@@ -570,6 +573,7 @@ export default function AdminPageClient({
 
   async function handleRefundSubmission(submissionId: Id<"submissions">) {
     setRefundError(null);
+    setRefundSuccess(null);
     setRefundPendingId(submissionId);
 
     try {
@@ -589,6 +593,9 @@ export default function AdminPageClient({
       if (!response.ok) {
         throw new Error(payload.error || "Failed to refund submission.");
       }
+
+      await refreshAdminData();
+      setRefundSuccess("Submission refunded.");
     } catch (error) {
       setRefundError(getErrorMessage(error, "Failed to refund submission."));
     } finally {
@@ -884,6 +891,7 @@ export default function AdminPageClient({
             cashoutConfirmOpen={cashoutConfirmOpen}
             onSetCashoutConfirmOpen={setCashoutConfirmOpen}
             cashoutPending={cashoutPending}
+            cashoutError={cashoutError}
             refundPendingId={refundPendingId}
             deletePendingId={submissionDeletePendingId}
             submissionDeleteConfirmId={submissionDeleteConfirmId}
@@ -891,12 +899,11 @@ export default function AdminPageClient({
             onGoToNextSubmissionsPage={handleGoToNextSubmissionsPage}
           />
 
+          {refundSuccess ? <p className="text-xs text-emerald-700">{refundSuccess}</p> : null}
           {refundError ? <p className="text-xs text-red-600">{refundError}</p> : null}
           {submissionDeleteError ? (
             <p className="text-xs text-red-600">{submissionDeleteError}</p>
           ) : null}
-          {cashoutError ? <p className="text-xs text-red-600">{cashoutError}</p> : null}
-
           <AnswerSubmissionDialog
             experienceId={experienceId}
             devUserToken={devUserToken}

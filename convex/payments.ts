@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import {
@@ -446,6 +446,56 @@ export const getSubmissionPaymentStatusForUser = query({
       whopCheckoutConfigurationId: paymentRow.whopCheckoutConfigurationId ?? null,
       expiresAt: paymentRow.expiresAt ?? null,
     };
+  },
+});
+
+export const listStalePendingPaymentAttempts = internalQuery({
+  args: {
+    olderThanMs: v.number(),
+    limit: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const cutoff = Date.now() - args.olderThanMs;
+
+    const rows = await ctx.db
+      .query("submissionPayments")
+      .withIndex("by_status_updated_at", (q) =>
+        q.eq("status", "pending").lt("updatedAt", cutoff),
+      )
+      .order("asc")
+      .take(args.limit);
+
+    return rows.map((row) => ({
+      submissionPaymentId: row._id,
+      status: row.status,
+      whopPaymentId: row.whopPaymentId ?? null,
+      whopCheckoutConfigurationId: row.whopCheckoutConfigurationId ?? null,
+      updatedAt: row.updatedAt,
+      expiresAt: row.expiresAt ?? null,
+      reconcileAttempts: row.reconcileAttempts ?? 0,
+    }));
+  },
+});
+
+export const touchReconciliationState = internalMutation({
+  args: {
+    submissionPaymentId: v.id("submissionPayments"),
+    errorMessage: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.submissionPaymentId);
+    if (!row) {
+      return null;
+    }
+
+    await ctx.db.patch(row._id, {
+      lastReconciledAt: Date.now(),
+      reconcileAttempts: (row.reconcileAttempts ?? 0) + 1,
+      updatedAt: Date.now(),
+      lastError: args.errorMessage,
+    });
+
+    return await ctx.db.get(row._id);
   },
 });
 

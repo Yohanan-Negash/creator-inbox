@@ -4,16 +4,9 @@ import { NextRequest } from "next/server";
 const mockVerifyUserToken = vi.fn();
 const mockCheckAccess = vi.fn();
 const mockPaymentsRetrieve = vi.fn();
-const mockPaymentsList = vi.fn();
 const mockConvexQuery = vi.fn();
 const mockConvexMutation = vi.fn();
 const mockNotifyAdminSubmissionCreated = vi.fn();
-
-async function* listResults(items: Array<unknown>) {
-  for (const item of items) {
-    yield item;
-  }
-}
 
 vi.mock("@/lib/whop", () => ({
   getWhopSdk: () => ({
@@ -23,7 +16,6 @@ vi.mock("@/lib/whop", () => ({
     },
     payments: {
       retrieve: mockPaymentsRetrieve,
-      list: mockPaymentsList,
     },
   }),
 }));
@@ -42,10 +34,8 @@ vi.mock("@/lib/whop-notifications", () => ({
 describe("GET /api/whop/payments/submission-status", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.WHOP_COMPANY_ID = "biz_test";
     mockVerifyUserToken.mockResolvedValue({ userId: "user_1" });
     mockCheckAccess.mockResolvedValue({ has_access: true });
-    mockPaymentsList.mockReturnValue(listResults([]));
     mockNotifyAdminSubmissionCreated.mockResolvedValue(true);
   });
 
@@ -73,7 +63,7 @@ describe("GET /api/whop/payments/submission-status", () => {
     expect(mockPaymentsRetrieve).not.toHaveBeenCalled();
   });
 
-  it("reconciles pending checkout attempt via payments.list when webhook is delayed", async () => {
+  it("does not reconcile via provider list when payment id is not linked", async () => {
     mockConvexQuery
       .mockResolvedValueOnce({
         submissionPaymentId: "spay_123",
@@ -89,30 +79,9 @@ describe("GET /api/whop/payments/submission-status", () => {
         status: "paid",
         submissionId: "sub_1",
         lastError: null,
-        whopPaymentId: "pay_123",
+        whopPaymentId: null,
         whopCheckoutConfigurationId: "ch_123",
         expiresAt: null,
-      });
-
-    mockPaymentsList.mockReturnValue(
-      listResults([
-        {
-          id: "pay_123",
-          status: "paid",
-          checkout_configuration_id: "ch_123",
-        },
-      ]),
-    );
-    mockConvexMutation
-      .mockResolvedValueOnce({
-        paymentId: "pay_123",
-      })
-      .mockResolvedValueOnce({
-        created: true,
-        experienceId: "exp_1",
-        creatorUserId: "creator_1",
-        requesterUserName: "member_1",
-        requestTypeTitle: "Growth strategy",
       });
 
     const { GET } = await import("../app/api/whop/payments/submission-status/route");
@@ -126,21 +95,8 @@ describe("GET /api/whop/payments/submission-status", () => {
     expect(response.status).toBe(200);
     expect(payload.status).toBe("paid");
     expect(payload.submissionCreated).toBe(true);
-    expect(mockConvexMutation).toHaveBeenCalledTimes(2);
-    expect(mockConvexMutation.mock.calls[0][1]).toEqual({
-      submissionPaymentId: "spay_123",
-      whopPaymentId: "pay_123",
-      whopCheckoutConfigurationId: "ch_123",
-    });
-    expect(mockConvexMutation.mock.calls[1][1]).toEqual({
-      submissionPaymentId: "spay_123",
-    });
-    expect(mockNotifyAdminSubmissionCreated).toHaveBeenCalledWith({
-      experienceId: "exp_1",
-      creatorUserId: "creator_1",
-      requesterUserName: "member_1",
-      requestTypeTitle: "Growth strategy",
-    });
+    expect(mockConvexMutation).not.toHaveBeenCalled();
+    expect(mockPaymentsRetrieve).not.toHaveBeenCalled();
   });
 
   it("completes when attempt already has whopPaymentId linked", async () => {
