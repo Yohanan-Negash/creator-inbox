@@ -1,5 +1,11 @@
 # creator-inbox
 
+## 1.1.3
+
+### Patch Changes
+
+- enhancement: Refactor and cleanup
+
 ## 1.1.2
 
 ### Patch Changes
