@@ -38,10 +38,19 @@ async function getExperienceCompanyId(whopSdk: unknown, experienceId: string) {
 
 export async function POST(request: NextRequest) {
   const route = "/api/whop/payments/cashout";
+  const baseLog = {
+    route,
+    method: "POST",
+  };
 
   try {
     const parsed = cashoutSchema.safeParse(await request.json());
     if (!parsed.success) {
+      logger.info("Cashout request validation failed", {
+        ...baseLog,
+        event: "whop.payment.cashout.validation_failed",
+        status: 400,
+      });
       return NextResponse.json({ error: "Invalid request payload." }, { status: 400 });
     }
 
@@ -58,6 +67,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (access.access_level !== "admin") {
+      logger.info("Cashout access denied", {
+        ...baseLog,
+        event: "whop.payment.cashout.access_denied",
+        status: 403,
+        experienceId: parsed.data.experienceId,
+        viewerUserId,
+      });
       return NextResponse.json({ error: "Admin access required." }, { status: 403 });
     }
 
@@ -71,10 +87,27 @@ export async function POST(request: NextRequest) {
     const minimumCashoutUsd = 5;
 
     if (grossBalance <= 0) {
+      logger.info("Cashout rejected due to no balance", {
+        ...baseLog,
+        event: "whop.payment.cashout.no_balance",
+        status: 400,
+        experienceId: parsed.data.experienceId,
+        viewerUserId,
+        grossBalance,
+      });
       return NextResponse.json({ error: "No balance available to cash out." }, { status: 400 });
     }
 
     if (grossBalance < minimumCashoutUsd) {
+      logger.info("Cashout rejected below minimum", {
+        ...baseLog,
+        event: "whop.payment.cashout.minimum_not_met",
+        status: 400,
+        experienceId: parsed.data.experienceId,
+        viewerUserId,
+        grossBalance,
+        minimumCashoutUsd,
+      });
       return NextResponse.json(
         { error: `Minimum cash out amount is $${minimumCashoutUsd}.` },
         { status: 400 },
@@ -85,6 +118,15 @@ export async function POST(request: NextRequest) {
     const destinationCompanyId = await getExperienceCompanyId(whopSdk, parsed.data.experienceId);
 
     if (destinationCompanyId === originCompanyId) {
+      logger.info("Cashout rejected due to invalid destination", {
+        ...baseLog,
+        event: "whop.payment.cashout.invalid_destination",
+        status: 400,
+        experienceId: parsed.data.experienceId,
+        viewerUserId,
+        destinationCompanyId: `${destinationCompanyId.slice(0, 7)}***`,
+        originCompanyId: `${originCompanyId.slice(0, 7)}***`,
+      });
       return NextResponse.json(
         { error: "Destination company cannot match platform company." },
         { status: 400 },
@@ -95,6 +137,14 @@ export async function POST(request: NextRequest) {
     const platformFeeUsd = cashoutBreakdown.appFeeUsd;
 
     if (creatorAmountUsd <= 0) {
+      logger.info("Cashout rejected due to creator amount", {
+        ...baseLog,
+        event: "whop.payment.cashout.creator_amount_invalid",
+        status: 400,
+        experienceId: parsed.data.experienceId,
+        viewerUserId,
+        creatorAmountUsd,
+      });
       return NextResponse.json(
         { error: "Balance is too low to cash out." },
         { status: 400 },
@@ -115,6 +165,18 @@ export async function POST(request: NextRequest) {
     if (!pendingCashout) {
       throw new Error("Unable to create cashout.");
     }
+
+    logger.info("Cashout transfer initiated", {
+      ...baseLog,
+      event: "whop.payment.cashout.transfer_initiated",
+      experienceId: parsed.data.experienceId,
+      viewerUserId,
+      destinationCompanyId: `${destinationCompanyId.slice(0, 7)}***`,
+      grossAmountUsd: grossBalance,
+      creatorAmountUsd,
+      platformFeeUsd,
+      pendingCashoutId: String(pendingCashout._id),
+    });
 
     const transfer = await (whopSdk as {
       transfers: {
@@ -150,8 +212,7 @@ export async function POST(request: NextRequest) {
     });
 
     logger.info("Cashout completed", {
-      route,
-      method: "POST",
+      ...baseLog,
       event: "whop.payment.cashout.completed",
       experienceId: parsed.data.experienceId,
       viewerUserId,
@@ -180,8 +241,7 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     logger.error("Cashout route failed", {
-      route,
-      method: "POST",
+      ...baseLog,
       event: "whop.payment.cashout.failed",
       status: 500,
       errorMessage: getSafeErrorMessage(error),

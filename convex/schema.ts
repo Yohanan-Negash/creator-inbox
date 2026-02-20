@@ -89,6 +89,8 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
     expiresAt: v.optional(v.number()),
+    lastReconciledAt: v.optional(v.number()),
+    reconcileAttempts: v.optional(v.number()),
     refundedAt: v.optional(v.number()),
     lastError: v.optional(v.string()),
   })
@@ -96,7 +98,8 @@ export default defineSchema({
     .index("by_whop_checkout_configuration_id", ["whopCheckoutConfigurationId"])
     .index("by_checkout_configuration_id", ["checkoutConfigurationId"])
     .index("by_submission_id", ["submissionId"])
-    .index("by_experience_user", ["experienceId", "viewerUserId"]),
+    .index("by_experience_user", ["experienceId", "viewerUserId"])
+    .index("by_status_updated_at", ["status", "updatedAt"]),
   creatorMetrics: defineTable({
     creatorId: v.string(),
     experienceId: v.string(),

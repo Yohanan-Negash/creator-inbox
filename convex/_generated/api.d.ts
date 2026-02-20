@@ -8,7 +8,9 @@
  * @module
  */
 
+import type * as crons from "../crons.js";
 import type * as payments from "../payments.js";
+import type * as paymentsReconcile from "../paymentsReconcile.js";
 import type * as requestTypes from "../requestTypes.js";
 import type * as submissions from "../submissions.js";
 
@@ -19,7 +21,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  crons: typeof crons;
   payments: typeof payments;
+  paymentsReconcile: typeof paymentsReconcile;
   requestTypes: typeof requestTypes;
   submissions: typeof submissions;
 }>;

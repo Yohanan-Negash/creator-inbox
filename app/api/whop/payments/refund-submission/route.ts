@@ -108,10 +108,19 @@ async function finalizeSubmissionRefundWithRetry(
 
 export async function POST(request: NextRequest) {
   const route = "/api/whop/payments/refund-submission";
+  const baseLog = {
+    route,
+    method: "POST",
+  };
 
   try {
     const parsed = refundSubmissionSchema.safeParse(await request.json());
     if (!parsed.success) {
+      logger.info("Submission refund request validation failed", {
+        ...baseLog,
+        event: "whop.payment.refund.validation_failed",
+        status: 400,
+      });
       return NextResponse.json({ error: "Invalid request payload." }, { status: 400 });
     }
 
@@ -128,6 +137,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (access.access_level !== "admin") {
+      logger.info("Submission refund access denied", {
+        ...baseLog,
+        event: "whop.payment.refund.access_denied",
+        status: 403,
+        experienceId: parsed.data.experienceId,
+        submissionId: parsed.data.submissionId,
+        viewerUserId,
+      });
       throw createHttpError(403, "Admin access required.");
     }
 
@@ -138,6 +155,14 @@ export async function POST(request: NextRequest) {
 
     // Idempotency: if already refunded, return success without calling Whop again
     if (context.status === "refunded") {
+      logger.info("Submission already refunded (idempotent)", {
+        ...baseLog,
+        event: "whop.payment.refund.idempotent_hit",
+        status: 200,
+        experienceId: parsed.data.experienceId,
+        submissionId: context.submissionId,
+        viewerUserId,
+      });
       return NextResponse.json(
         {
           success: true,
@@ -159,16 +184,51 @@ export async function POST(request: NextRequest) {
 
       const paymentBefore = await paymentsClient.retrieve(context.whopPaymentId);
       if (isWhopPaymentRefunded(paymentBefore)) {
+        logger.info("Whop payment already refunded", {
+          ...baseLog,
+          event: "whop.payment.refund.whop_already_refunded",
+          status: 200,
+          experienceId: parsed.data.experienceId,
+          submissionId: parsed.data.submissionId,
+          viewerUserId,
+          whopPaymentId: context.whopPaymentId,
+        });
         whopRefundApplied = true;
       } else {
         try {
+          logger.info("Whop refund initiated", {
+            ...baseLog,
+            event: "whop.payment.refund.whop_refund_initiated",
+            experienceId: parsed.data.experienceId,
+            submissionId: parsed.data.submissionId,
+            viewerUserId,
+            whopPaymentId: context.whopPaymentId,
+          });
           await paymentsClient.refund(context.whopPaymentId);
+          logger.info("Whop refund succeeded", {
+            ...baseLog,
+            event: "whop.payment.refund.whop_refund_succeeded",
+            status: 200,
+            experienceId: parsed.data.experienceId,
+            submissionId: parsed.data.submissionId,
+            viewerUserId,
+            whopPaymentId: context.whopPaymentId,
+          });
           whopRefundApplied = true;
         } catch (error) {
           const message = getSafeErrorMessage(error).toLowerCase();
           if (message.includes("cannot be refunded") || message.includes("already refunded")) {
             const paymentAfter = await paymentsClient.retrieve(context.whopPaymentId);
             if (isWhopPaymentRefunded(paymentAfter)) {
+              logger.info("Whop refund confirmed after conflict response", {
+                ...baseLog,
+                event: "whop.payment.refund.whop_refund_confirmed_after_conflict",
+                status: 200,
+                experienceId: parsed.data.experienceId,
+                submissionId: parsed.data.submissionId,
+                viewerUserId,
+                whopPaymentId: context.whopPaymentId,
+              });
               whopRefundApplied = true;
             } else {
               throw error;
@@ -197,8 +257,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       if (whopRefundApplied) {
         logger.error("Whop refund succeeded but finalize failed", {
-          route,
-          method: "POST",
+          ...baseLog,
           event: "whop.payment.refund_finalize_failed_after_whop_success",
           submissionId: parsed.data.submissionId,
           whopPaymentId: context.whopPaymentId,
@@ -216,6 +275,16 @@ export async function POST(request: NextRequest) {
         requestTypeTitle: refunded.requestTypeTitleSnapshot,
       });
     }
+
+    logger.info("Submission refund completed", {
+      ...baseLog,
+      event: "whop.payment.refund.completed",
+      status: 200,
+      experienceId: parsed.data.experienceId,
+      submissionId: refunded?._id ?? parsed.data.submissionId,
+      viewerUserId,
+      whopPaymentId: context.whopPaymentId ?? null,
+    });
 
     return NextResponse.json(
       {
@@ -243,8 +312,7 @@ export async function POST(request: NextRequest) {
     }
 
     logger.error("Submission refund route failed", {
-      route,
-      method: "POST",
+      ...baseLog,
       event: "whop.payment.refund_failed",
       status,
       errorMessage,
