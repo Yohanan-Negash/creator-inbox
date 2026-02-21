@@ -71,9 +71,7 @@ describe("POST /api/whop/experiences/[experienceId]/submissions/action", () => {
     });
   });
 
-  it("does not send notification for delete action", async () => {
-    mockConvexMutation.mockResolvedValueOnce({ success: true, submissionId: "sub_1" });
-
+  it("rejects delete action payload", async () => {
     const { POST } = await import(
       "../app/api/whop/experiences/[experienceId]/submissions/action/route"
     );
@@ -90,8 +88,11 @@ describe("POST /api/whop/experiences/[experienceId]/submissions/action", () => {
     });
 
     const response = await POST(request, { params: Promise.resolve({ experienceId: "exp_1" }) });
+    const payload = await response.json();
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(400);
+    expect(payload).toEqual({ error: "Invalid request payload." });
+    expect(mockConvexMutation).not.toHaveBeenCalled();
     expect(mockNotifyUserSubmissionAnswered).not.toHaveBeenCalled();
   });
 });

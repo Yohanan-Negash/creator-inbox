@@ -146,13 +146,6 @@ export default function AdminPageClient({
   const [refundPendingId, setRefundPendingId] = useState<Id<"submissions"> | null>(null);
   const [refundError, setRefundError] = useState<string | null>(null);
   const [refundSuccess, setRefundSuccess] = useState<string | null>(null);
-  const [submissionDeletePendingId, setSubmissionDeletePendingId] = useState<
-    Id<"submissions"> | null
-  >(null);
-  const [submissionDeleteError, setSubmissionDeleteError] = useState<string | null>(null);
-  const [submissionDeleteConfirmId, setSubmissionDeleteConfirmId] = useState<
-    Id<"submissions"> | null
-  >(null);
   const [cashoutPending, setCashoutPending] = useState(false);
   const [cashoutError, setCashoutError] = useState<string | null>(null);
   const [cashoutConfirmOpen, setCashoutConfirmOpen] = useState(false);
@@ -604,43 +597,6 @@ export default function AdminPageClient({
     }
   }
 
-  async function handleDeleteSubmission(submissionId: Id<"submissions">) {
-    if (!viewerUserId) {
-      setSubmissionDeleteError("Unable to verify your user account. Please refresh and try again.");
-      return false;
-    }
-
-    setSubmissionDeleteError(null);
-    setSubmissionDeletePendingId(submissionId);
-
-    try {
-      await postSubmissionAction(experienceId, {
-        action: "delete",
-        submissionId,
-        whopDevUserToken: devUserToken || undefined,
-      });
-
-      await refreshAdminData();
-      return true;
-    } catch (error) {
-      setSubmissionDeleteError(getErrorMessage(error, "Failed to delete submission."));
-      return false;
-    } finally {
-      setSubmissionDeletePendingId(null);
-    }
-  }
-
-  async function handleConfirmDeleteSubmission() {
-    if (!submissionDeleteConfirmId) {
-      return;
-    }
-
-    const deleted = await handleDeleteSubmission(submissionDeleteConfirmId);
-    if (deleted) {
-      setSubmissionDeleteConfirmId(null);
-    }
-  }
-
   async function handleCashout() {
     setCashoutError(null);
     setCashoutPending(true);
@@ -887,25 +843,18 @@ export default function AdminPageClient({
             hasNextSubmissionsPage={hasNextSubmissionsPage}
             onOpenAnswerDialog={openAnswerDialog}
             onRefundSubmission={handleRefundSubmission}
-            onSetSubmissionDeleteConfirmId={setSubmissionDeleteConfirmId}
-            onConfirmDeleteSubmission={handleConfirmDeleteSubmission}
             onConfirmCashout={handleCashout}
             cashoutConfirmOpen={cashoutConfirmOpen}
             onSetCashoutConfirmOpen={setCashoutConfirmOpen}
             cashoutPending={cashoutPending}
             cashoutError={cashoutError}
             refundPendingId={refundPendingId}
-            deletePendingId={submissionDeletePendingId}
-            submissionDeleteConfirmId={submissionDeleteConfirmId}
             onGoToPreviousSubmissionsPage={handleGoToPreviousSubmissionsPage}
             onGoToNextSubmissionsPage={handleGoToNextSubmissionsPage}
           />
 
           {refundSuccess ? <p className="text-xs text-primary">{refundSuccess}</p> : null}
           {refundError ? <p className="text-xs text-destructive">{refundError}</p> : null}
-          {submissionDeleteError ? (
-            <p className="text-xs text-destructive">{submissionDeleteError}</p>
-          ) : null}
           <AnswerSubmissionDialog
             experienceId={experienceId}
             devUserToken={devUserToken}
