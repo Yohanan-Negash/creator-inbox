@@ -1,5 +1,11 @@
 # creator-inbox
 
+## 1.1.5
+
+### Patch Changes
+
+- enhancement: Remove the delete submission record feature
+
 ## 1.1.4
 
 ### Patch Changes
