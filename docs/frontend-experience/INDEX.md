@@ -7,7 +7,7 @@ related: [architecture, convex-backend]
 
 # Frontend Experience
 
-**Version:** 1.0 | **Last Updated:** 2026-02-08
+**Version:** 1.0 | **Last Updated:** 2026-02-20
 
 ## Quick Reference
 

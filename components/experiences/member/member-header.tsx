@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Loader2, MessageSquare } from "lucide-react";
+import { ThemeToggle } from "@/components/experiences/shared/theme-toggle";
 import { Button } from "@/components/ui/button";
 
 type MemberHeaderProps = {
@@ -20,7 +21,7 @@ export function MemberHeader({
   onToggleView,
 }: MemberHeaderProps) {
   return (
-    <header className="flex flex-col gap-3 border-b border-zinc-200 pb-3 sm:flex-row sm:items-center sm:justify-between">
+    <header className="flex flex-col gap-3 border-b border-border pb-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <p className="inline-flex items-center gap-2 border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-primary">
           <MessageSquare className="size-4" />
@@ -33,8 +34,8 @@ export function MemberHeader({
           size="sm"
           className={`w-full sm:w-auto ${
             activeView === "submissions"
-              ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
-              : ""
+              ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary dark:bg-primary/15 dark:hover:bg-primary/20"
+              : "border-border text-foreground hover:bg-muted"
           }`}
           disabled={togglePending}
           onClick={onToggleView}
@@ -65,6 +66,7 @@ export function MemberHeader({
             Admin Page
           </Button>
         ) : null}
+        <ThemeToggle />
       </div>
     </header>
   );

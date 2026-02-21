@@ -1,4 +1,4 @@
-import { internalMutation, mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -498,6 +498,56 @@ export const listVisibleForUserPaginated = query({
       })),
       continueCursor: paginated.continueCursor,
       isDone: paginated.isDone,
+    };
+  },
+});
+
+export const listSubmissionUserNamesForBackfill = internalQuery({
+  args: {
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const paginated = await ctx.db.query("submissions").order("desc").paginate(args.paginationOpts);
+
+    return {
+      page: paginated.page.map((submission) => ({
+        submissionId: submission._id,
+        userId: submission.userId,
+        userName: submission.userName,
+      })),
+      continueCursor: paginated.continueCursor,
+      isDone: paginated.isDone,
+    };
+  },
+});
+
+export const applySubmissionUserNameBackfill = internalMutation({
+  args: {
+    updates: v.array(
+      v.object({
+        submissionId: v.id("submissions"),
+        userName: v.string(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    let updatedCount = 0;
+
+    for (const update of args.updates) {
+      const row = await ctx.db.get(update.submissionId);
+      if (!row || row.userName === update.userName) {
+        continue;
+      }
+
+      await ctx.db.patch(row._id, {
+        userName: update.userName,
+      });
+      updatedCount += 1;
+    }
+
+    return {
+      attempted: args.updates.length,
+      updated: updatedCount,
     };
   },
 });

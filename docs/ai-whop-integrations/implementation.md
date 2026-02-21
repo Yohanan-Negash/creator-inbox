@@ -33,10 +33,14 @@
 
 1. Verifies token + access for the experience.
 2. Reads a user-scoped payment attempt from Convex via immutable `attemptId`.
-3. Reconciles with Whop `payments.retrieve` or `payments.list`; links `whopPaymentId` onto the same attempt.
-4. Finalizes or fails the attempt idempotently if provider state is terminal.
-5. On first successful submission creation only, queues an admin-targeted Whop notification.
-6. Returns submission creation status for client polling.
+3. Reconciles with Whop provider status using one or more inputs:
+   - linked `whopPaymentId` (direct retrieve)
+   - optional `receiptId` from checkout `onComplete` callback (direct retrieve)
+   - checkout-id fallback scan via `payments.list` when company id is configured
+4. Links resolved `whopPaymentId` onto the same attempt when available.
+5. Finalizes or fails the attempt idempotently if provider state is terminal.
+6. On first successful submission creation only, queues an admin-targeted Whop notification.
+7. Returns submission creation status for client confirmation.
 
 ### `/api/whop/payments/webhook`
 

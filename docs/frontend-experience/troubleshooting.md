@@ -23,3 +23,9 @@
 - **Symptom**: users see stack-like or provider-specific text in admin/member error states.
 - **Cause**: UI reads raw thrown errors instead of showing fallback copy.
 - **Fix**: always render simple user-facing text (`Please try again.` or `Please try again later.`) in UI state handlers, and keep technical detail in server logs only.
+
+## Light/dark mode contrast regressions (white-on-white, low-contrast text)
+
+- **Symptom**: some cards, tables, or dialogs are hard to read in light or dark mode.
+- **Cause**: hardcoded color classes (`bg-white`, `text-zinc-*`, `border-zinc-*`, etc.) bypass theme tokens.
+- **Fix**: replace hardcoded colors with semantic tokens and dark variants where needed (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`), and verify `ThemeProvider` in `app/layout.tsx` is using system mode.

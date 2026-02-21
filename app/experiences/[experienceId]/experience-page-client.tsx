@@ -470,6 +470,31 @@ export default function ExperiencePageClient({
     [devUserToken, experienceId],
   );
 
+  const checkSubmissionPaymentStatus = useCallback(
+    async (attemptId: string, receiptId?: string) => {
+      const statusUrl = new URL("/api/whop/payments/submission-status", window.location.origin);
+      statusUrl.searchParams.set("experienceId", experienceId);
+      statusUrl.searchParams.set("attemptId", attemptId);
+      if (devUserToken) {
+        statusUrl.searchParams.set("whop-dev-user-token", devUserToken);
+      }
+      if (receiptId) {
+        statusUrl.searchParams.set("receiptId", receiptId);
+      }
+
+      const response = await fetch(statusUrl.toString());
+      if (!response.ok) {
+        throw new Error("Failed to check payment status.");
+      }
+
+      return (await response.json()) as {
+        status?: string;
+        submissionCreated?: boolean;
+      };
+    },
+    [devUserToken, experienceId],
+  );
+
   const handleGoToNextSubmissionsPage = useCallback(async () => {
     if (!submissionsNextCursor || submissionsPagePending) {
       return;
@@ -519,9 +544,9 @@ export default function ExperiencePageClient({
     }
   }, [fetchMemberSubmissionsPage, submissionsCursorHistory, submissionsPagePending]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async function handleCheckoutComplete(_planId: string, _receiptId?: string) {
-    if (!checkoutAttemptId) {
+  async function handleCheckoutComplete(_planId: string, receiptId?: string) {
+    const attemptId = checkoutAttemptId;
+    if (!attemptId) {
       setSubmitDialogOpen(false);
       resetCheckoutState();
       setActiveView("submissions");
@@ -531,49 +556,45 @@ export default function ExperiencePageClient({
     setSubmissionPending(true);
     setSubmissionError(null);
 
-    const maxAttempts = 10;
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        const statusUrl = new URL("/api/whop/payments/submission-status", window.location.origin);
-        statusUrl.searchParams.set("experienceId", experienceId);
-        statusUrl.searchParams.set("attemptId", checkoutAttemptId);
-        if (devUserToken) {
-          statusUrl.searchParams.set("whop-dev-user-token", devUserToken);
-        }
-
-        const response = await fetch(statusUrl.toString());
-        const statusPayload = (await response.json()) as {
-          status?: string;
-          submissionCreated?: boolean;
-        };
-
-        if (statusPayload.status === "paid" && statusPayload.submissionCreated) {
-          setSubmitDialogOpen(false);
-          resetCheckoutState();
-          setSubmissionPending(false);
-          setActiveView("submissions");
-          await refreshMemberData();
-          return;
-        }
-
-        if (statusPayload.status === "failed") {
-          setSubmissionError("Payment failed. Please try again.");
-          resetCheckoutState();
-          setSubmissionPending(false);
-          return;
-        }
-      } catch {
-        // continue polling
+    try {
+      const statusPayload = await checkSubmissionPaymentStatus(attemptId, receiptId);
+      if (statusPayload.status === "paid" && statusPayload.submissionCreated) {
+        setSubmitDialogOpen(false);
+        resetCheckoutState();
+        setSubmissionPending(false);
+        setActiveView("submissions");
+        await refreshMemberData();
+        return;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      if (statusPayload.status === "failed") {
+        setSubmissionError("Payment failed. Please try again.");
+        resetCheckoutState();
+        setSubmissionPending(false);
+        return;
+      }
+    } catch {
+      // Webhook may still finalize asynchronously.
     }
 
-    // Timed out but payment may still be processing
     setSubmitDialogOpen(false);
     resetCheckoutState();
     setSubmissionPending(false);
     setActiveView("submissions");
+    await refreshMemberData();
+
+    window.setTimeout(() => {
+      void (async () => {
+        try {
+          const followUp = await checkSubmissionPaymentStatus(attemptId);
+          if (followUp.status === "paid" && followUp.submissionCreated) {
+            await refreshMemberData();
+          }
+        } catch {
+          // no-op
+        }
+      })();
+    }, 4000);
   }
 
   function handleCheckoutCancel() {
@@ -608,7 +629,7 @@ export default function ExperiencePageClient({
         <div className="flex min-h-[60vh] items-center justify-center p-6">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="size-8 animate-spin text-primary" />
-            <p className="text-sm text-zinc-500">Loading experience access...</p>
+            <p className="text-sm text-muted-foreground">Loading experience access...</p>
           </div>
         </div>
       ) : null}
@@ -637,7 +658,7 @@ export default function ExperiencePageClient({
         <div className="flex min-h-[60vh] items-center justify-center p-6">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="size-8 animate-spin text-primary" />
-            <p className="text-sm text-zinc-500">Loading requests...</p>
+            <p className="text-sm text-muted-foreground">Loading requests...</p>
           </div>
         </div>
       ) : null}
