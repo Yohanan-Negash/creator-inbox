@@ -212,7 +212,7 @@ export function MetricsSubmissionsSection({
                     submission.amountUsd > 0;
 
                   return (
-                    <div key={String(submission._id)} className="grid gap-2 border border-border p-3">
+                    <div key={String(submission._id)} className="grid gap-2 rounded-lg border border-border p-3">
                       <button
                         type="button"
                         className={`grid gap-2 text-left ${canOpenResponse ? "cursor-pointer" : ""}`}
@@ -227,7 +227,7 @@ export function MetricsSubmissionsSection({
                         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <span>{submission.userName}</span>
                           <span
-                            className={`inline-flex rounded-none border px-2 py-0.5 text-[11px] ${getStatusPillClass(submission.status)}`}
+                            className={`inline-flex rounded-md border px-2 py-0.5 text-[11px] ${getStatusPillClass(submission.status)}`}
                           >
                             {submission.status}
                           </span>
@@ -328,7 +328,7 @@ export function MetricsSubmissionsSection({
                           </TableCell>
                           <TableCell>
                             <span
-                              className={`inline-flex rounded-none border px-2 py-0.5 text-[11px] ${getStatusPillClass(submission.status)}`}
+                              className={`inline-flex rounded-md border px-2 py-0.5 text-[11px] ${getStatusPillClass(submission.status)}`}
                             >
                               {submission.status}
                             </span>
@@ -414,7 +414,7 @@ export function MetricsSubmissionsSection({
                   You are cashing out your available balance with a transparent payout breakdown.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <div className="grid gap-2 border border-border bg-muted/40 p-3 text-xs text-foreground">
+              <div className="grid gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-foreground">
                 <div className="flex items-center justify-between">
                   <span>Available balance</span>
                   <span className="font-medium text-foreground">

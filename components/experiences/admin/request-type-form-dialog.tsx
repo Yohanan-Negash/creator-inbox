@@ -260,7 +260,7 @@ export function RequestTypeFormDialog({
             ) : null}
           </div>
 
-          <div className="grid gap-1.5 rounded-none border border-border p-3">
+          <div className="grid gap-1.5 rounded-md border border-border p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="grid gap-1">
                 <label className="text-xs font-medium" htmlFor="request-type-allow-attachments">

@@ -112,7 +112,7 @@ export function SubmissionsView({
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="rounded-none border border-border px-2 py-1 text-muted-foreground">
+            <span className="rounded-md border border-border px-2 py-1 text-muted-foreground">
               {submissions?.length ?? 0} on this page
             </span>
           </div>
@@ -142,7 +142,7 @@ export function SubmissionsView({
                   key={rowId}
                   type="button"
                   onClick={() => onOpenSubmissionDetails(submission._id)}
-                  className={`grid gap-2 border p-3 text-left transition-colors ${
+                  className={`grid gap-2 rounded-lg border p-3 text-left transition-colors ${
                     isSelected ? "border-primary/40 bg-primary/5" : "border-border"
                   }`}
                 >
@@ -151,7 +151,7 @@ export function SubmissionsView({
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span
-                      className={`inline-flex rounded-none border px-2 py-0.5 text-[11px] ${getStatusPillClass(submission.status)}`}
+                      className={`inline-flex rounded-md border px-2 py-0.5 text-[11px] ${getStatusPillClass(submission.status)}`}
                     >
                       {submission.status}
                     </span>
@@ -190,7 +190,7 @@ export function SubmissionsView({
                         </TableCell>
                         <TableCell>
                           <span
-                            className={`inline-flex rounded-none border px-2 py-0.5 text-[11px] ${getStatusPillClass(submission.status)}`}
+                            className={`inline-flex rounded-md border px-2 py-0.5 text-[11px] ${getStatusPillClass(submission.status)}`}
                           >
                             {submission.status}
                           </span>

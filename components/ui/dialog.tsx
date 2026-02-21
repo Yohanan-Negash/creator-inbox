@@ -46,7 +46,7 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 bg-background ring-foreground/10 gap-4 rounded-none p-4 ring-1 duration-100 fixed top-1/2 left-1/2 z-50 grid w-full max-w-xs -translate-x-1/2 -translate-y-1/2 outline-none sm:max-w-sm",
+          "data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 bg-background ring-foreground/10 gap-4 rounded-lg p-4 ring-1 duration-100 fixed top-1/2 left-1/2 z-50 grid w-full max-w-xs -translate-x-1/2 -translate-y-1/2 outline-none sm:max-w-sm",
           className
         )}
         {...props}
@@ -54,7 +54,7 @@ function DialogContent({
         {children}
         {showCloseButton ? (
           <DialogPrimitive.Close
-            className="ring-offset-background focus:ring-ring data-[popup-open]:bg-accent data-[popup-open]:text-muted-foreground absolute top-4 right-4 rounded-none opacity-70 transition-opacity hover:opacity-100 focus:ring-1 focus:outline-none"
+            className="ring-offset-background focus:ring-ring data-[popup-open]:bg-accent data-[popup-open]:text-muted-foreground absolute top-4 right-4 rounded-md opacity-70 transition-opacity hover:opacity-100 focus:ring-1 focus:outline-none"
           >
             <XIcon className="size-4" />
             <span className="sr-only">Close</span>

@@ -111,7 +111,7 @@ export function RequestTypesManagement({
               return (
                 <div
                   key={itemId}
-                  className="flex flex-col gap-3 border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-3 rounded-xl border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="space-y-1">
                     <p className="text-sm font-medium">{item.title}</p>

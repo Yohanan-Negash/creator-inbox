@@ -144,7 +144,7 @@ export function SubmitRequestDialog({
             </DialogHeader>
 
             {selectedRequestType ? (
-              <div className="rounded-none border border-border p-2 text-xs text-muted-foreground">
+              <div className="rounded-md border border-border p-2 text-xs text-muted-foreground">
                 <p className="font-medium text-foreground">{selectedRequestType.title}</p>
                 <p>
                   {selectedRequestType.price === 0

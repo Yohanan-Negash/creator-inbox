@@ -3,7 +3,9 @@
 set -euo pipefail
 
 INPUT="${1:-PITCH_DECK.md}"
-OUTPUT="${2:-dist/creator-inbox-pitch-deck.pptx}"
+OUTPUT_BASENAME="${2:-creator-inbox-pitch-deck}"
+OUTPUT_BASENAME="${OUTPUT_BASENAME%.pptx}"
+OUTPUT="$HOME/Desktop/${OUTPUT_BASENAME}.pptx"
 
 mkdir -p "$(dirname "$OUTPUT")"
 
