@@ -1,5 +1,11 @@
 # creator-inbox
 
+## 1.1.6
+
+### Patch Changes
+
+- enhancement: Border radius does the charm
+
 ## 1.1.5
 
 ### Patch Changes
