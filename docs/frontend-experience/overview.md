@@ -27,6 +27,7 @@ The frontend is organized around two route surfaces per experience: member and a
   - view submission table and metrics cards
   - view answered submission responses
   - refund expired pending submissions from the submissions table
+  - submission deletion is intentionally disabled to preserve payout metrics and cashout balances
 
 ## Componentization Pattern
 

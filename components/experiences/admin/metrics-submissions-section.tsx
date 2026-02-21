@@ -1,5 +1,5 @@
 import type { Id } from "@/convex/_generated/dataModel";
-import { Download, Loader2, Paperclip, Trash2 } from "lucide-react";
+import { CircleHelp, Download, Loader2, Paperclip } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Pagination,
   PaginationContent,
@@ -73,16 +74,12 @@ type MetricsSubmissionsSectionProps = {
   hasNextSubmissionsPage: boolean;
   onOpenAnswerDialog: (submissionId: Id<"submissions">) => void;
   onRefundSubmission: (submissionId: Id<"submissions">) => void;
-  onSetSubmissionDeleteConfirmId: (submissionId: Id<"submissions"> | null) => void;
-  onConfirmDeleteSubmission: () => void;
   onConfirmCashout: () => void;
   cashoutConfirmOpen: boolean;
   onSetCashoutConfirmOpen: (open: boolean) => void;
   cashoutPending: boolean;
   cashoutError: string | null;
   refundPendingId: Id<"submissions"> | null;
-  deletePendingId: Id<"submissions"> | null;
-  submissionDeleteConfirmId: Id<"submissions"> | null;
   onGoToPreviousSubmissionsPage: () => void;
   onGoToNextSubmissionsPage: () => void;
 };
@@ -98,16 +95,12 @@ export function MetricsSubmissionsSection({
   hasNextSubmissionsPage,
   onOpenAnswerDialog,
   onRefundSubmission,
-  onSetSubmissionDeleteConfirmId,
-  onConfirmDeleteSubmission,
   onConfirmCashout,
   cashoutConfirmOpen,
   onSetCashoutConfirmOpen,
   cashoutPending,
   cashoutError,
   refundPendingId,
-  deletePendingId,
-  submissionDeleteConfirmId,
   onGoToPreviousSubmissionsPage,
   onGoToNextSubmissionsPage,
 }: MetricsSubmissionsSectionProps) {
@@ -162,13 +155,27 @@ export function MetricsSubmissionsSection({
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Pending to Earn</CardDescription>
+            <CardDescription className="flex items-center gap-1.5">
+              <span>Pending to Earn</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center text-muted-foreground"
+                    aria-label="What pending to earn means"
+                  >
+                    <CircleHelp className="size-3.5" aria-hidden="true" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-64 text-balance" align="start">
+                  Revenue from paid requests awaiting your response. Answer before each deadline to move this
+                  amount into Money Available.
+                </TooltipContent>
+              </Tooltip>
+            </CardDescription>
             <CardTitle className="text-foreground">
               ${(metrics?.moneyAvailable ?? 0).toFixed(2)}
             </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Answer pending requests before their deadline to move this into Money Available.
-            </p>
           </CardHeader>
         </Card>
       </div>
@@ -252,39 +259,20 @@ export function MetricsSubmissionsSection({
                         ) : null}
                       </button>
 
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        {canRefundSubmission ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-7 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                              disabled={refundPendingId === submission._id}
-                              onClick={() => onRefundSubmission(submission._id)}
-                            >
+                      {canRefundSubmission ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            disabled={refundPendingId === submission._id}
+                            onClick={() => onRefundSubmission(submission._id)}
+                          >
                             {refundPendingId === submission._id ? "Refunding..." : "Refund"}
                           </Button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">&nbsp;</span>
-                        )}
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={deletePendingId === submission._id}
-                          onClick={() => onSetSubmissionDeleteConfirmId(submission._id)}
-                        >
-                          {deletePendingId === submission._id ? (
-                            "Deleting..."
-                          ) : (
-                            <>
-                              <Trash2 className="size-3.5" />
-                              Delete
-                            </>
-                          )}
-                        </Button>
-                      </div>
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -300,7 +288,6 @@ export function MetricsSubmissionsSection({
                       <TableHead>Created</TableHead>
                       <TableHead>Deadline</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -370,27 +357,6 @@ export function MetricsSubmissionsSection({
                             )}
                           </TableCell>
                           <TableCell className="text-right">${submission.amountUsd.toFixed(2)}</TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={deletePendingId === submission._id}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                onSetSubmissionDeleteConfirmId(submission._id);
-                              }}
-                            >
-                              {deletePendingId === submission._id ? (
-                                "Deleting..."
-                              ) : (
-                                <>
-                                  <Trash2 className="size-3.5" />
-                                  Delete
-                                </>
-                              )}
-                            </Button>
-                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -493,42 +459,6 @@ export function MetricsSubmissionsSection({
             </AlertDialogContent>
           </AlertDialog>
 
-          <AlertDialog
-            open={Boolean(submissionDeleteConfirmId)}
-            onOpenChange={(open) => {
-              if (!open) {
-                onSetSubmissionDeleteConfirmId(null);
-              }
-            }}
-          >
-            <AlertDialogContent size="sm">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete submission?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This permanently removes the submission from both your admin dashboard and the
-                  member&apos;s submissions list.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel
-                  disabled={
-                    Boolean(submissionDeleteConfirmId) && deletePendingId === submissionDeleteConfirmId
-                  }
-                >
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={onConfirmDeleteSubmission}
-                  disabled={
-                    !submissionDeleteConfirmId || deletePendingId === submissionDeleteConfirmId
-                  }
-                >
-                  {deletePendingId === submissionDeleteConfirmId ? "Deleting..." : "Confirm delete"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </CardContent>
       </Card>
     </section>

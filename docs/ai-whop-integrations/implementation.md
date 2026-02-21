@@ -62,9 +62,9 @@
 ### `/api/whop/experiences/[experienceId]/submissions/action`
 
 1. Verifies admin access for the experience.
-2. Supports `answer` and `delete` submission actions.
+2. Supports `answer` submission action only.
 3. For `answer`, updates submission status in Convex and queues requester-targeted Whop notification.
-4. For `delete`, deletes submission and payment link in Convex (no notification).
+4. Rejects unsupported actions (including `delete`) with `400` to protect payout and metrics integrity.
 
 ## Notification Policy
 

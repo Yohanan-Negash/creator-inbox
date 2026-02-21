@@ -7,19 +7,12 @@ import { logger } from "@/lib/logger";
 import { getWhopSdk } from "@/lib/whop";
 import { notifyUserSubmissionAnswered } from "@/lib/whop-notifications";
 
-const actionSchema = z.discriminatedUnion("action", [
-  z.object({
-    action: z.literal("answer"),
-    submissionId: z.string().min(1),
-    responseText: z.string().trim().min(4),
-    whopDevUserToken: z.string().optional(),
-  }),
-  z.object({
-    action: z.literal("delete"),
-    submissionId: z.string().min(1),
-    whopDevUserToken: z.string().optional(),
-  }),
-]);
+const actionSchema = z.object({
+  action: z.literal("answer"),
+  submissionId: z.string().min(1),
+  responseText: z.string().trim().min(4),
+  whopDevUserToken: z.string().optional(),
+});
 
 export async function POST(
   request: NextRequest,
@@ -44,29 +37,22 @@ export async function POST(
       return NextResponse.json({ error: "Admin access required." }, { status: 403 });
     }
 
-    if (body.data.action === "answer") {
-      const answered = await convex.mutation(api.submissions.answerSubmission, {
-        submissionId: body.data.submissionId as never,
-        viewerUserId,
-        responseText: body.data.responseText,
-      });
+    const answered = await convex.mutation(api.submissions.answerSubmission, {
+      submissionId: body.data.submissionId as never,
+      viewerUserId,
+      responseText: body.data.responseText,
+    });
 
-      if (!answered) {
-        throw new Error("Submission was answered but result payload is missing.");
-      }
-
-      await notifyUserSubmissionAnswered({
-        experienceId: answered.experienceId,
-        requesterUserId: answered.userId,
-        creatorUserId: answered.creatorId,
-        requestTypeTitle: answered.requestTypeTitleSnapshot,
-      });
-    } else {
-      await convex.mutation(api.submissions.deleteSubmissionForCreator, {
-        submissionId: body.data.submissionId as never,
-        viewerUserId,
-      });
+    if (!answered) {
+      throw new Error("Submission was answered but result payload is missing.");
     }
+
+    await notifyUserSubmissionAnswered({
+      experienceId: answered.experienceId,
+      requesterUserId: answered.userId,
+      creatorUserId: answered.creatorId,
+      requestTypeTitle: answered.requestTypeTitleSnapshot,
+    });
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
