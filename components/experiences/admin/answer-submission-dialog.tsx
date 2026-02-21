@@ -81,11 +81,11 @@ export function AnswerSubmissionDialog({
 
           <div className="grid gap-1.5">
             <p className="text-xs font-medium">Member request</p>
-            <div className="min-h-20 whitespace-pre-wrap rounded-none border border-border p-3 text-xs text-foreground">
+            <div className="min-h-20 whitespace-pre-wrap rounded-md border border-border p-3 text-xs text-foreground">
               {selectedSubmission?.submissionText?.trim() || "No submission text available."}
             </div>
             {selectedSubmission?.attachment ? (
-              <div className="flex items-center justify-between gap-2 border border-border p-2 text-xs text-foreground">
+              <div className="flex items-center justify-between gap-2 rounded-md border border-border p-2 text-xs text-foreground">
                 <div className="min-w-0">
                   <p className="truncate font-medium">{selectedSubmission.attachment.fileName}</p>
                   <p className="text-muted-foreground">Attachment</p>
@@ -126,7 +126,7 @@ export function AnswerSubmissionDialog({
                 </p>
               </>
             ) : (
-              <div className="min-h-28 whitespace-pre-wrap rounded-none border border-border p-3 text-xs text-foreground">
+              <div className="min-h-28 whitespace-pre-wrap rounded-md border border-border p-3 text-xs text-foreground">
                 {selectedSubmission?.responseText?.trim() || "No response available."}
               </div>
             )}
