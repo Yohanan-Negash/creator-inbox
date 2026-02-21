@@ -89,4 +89,48 @@ describe("POST /api/whop/payments/create-submission-payment", () => {
     });
     expect(mockCheckoutConfigurationsCreate).not.toHaveBeenCalled();
   });
+
+  it("uses user id when username is missing", async () => {
+    mockUsersRetrieve.mockResolvedValueOnce({ username: "", name: "Member Name" });
+    mockConvexQuery.mockResolvedValueOnce({
+      requestTypeId: "rt_1",
+      creatorId: "creator_1",
+      title: "Quick question",
+      price: 0,
+    });
+    mockConvexMutation.mockResolvedValueOnce({ _id: "sub_1" });
+
+    const { POST } = await import("../app/api/whop/payments/create-submission-payment/route");
+    const request = new NextRequest("https://example.com/api/whop/payments/create-submission-payment", {
+      method: "POST",
+      body: JSON.stringify({
+        experienceId: "exp_1",
+        requestTypeId: "rt_1",
+        submissionText: "Can you review this intro?",
+        whopDevUserToken: "dev-token",
+      }),
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+
+    const response = await POST(request);
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.submissionCreated).toBe(true);
+    expect(mockConvexMutation).toHaveBeenCalledWith(expect.anything(), {
+      experienceId: "exp_1",
+      requestTypeId: "rt_1",
+      viewerUserId: "user_1",
+      viewerUserName: "user_1",
+      submissionText: "Can you review this intro?",
+    });
+    expect(mockNotifyAdminSubmissionCreated).toHaveBeenCalledWith({
+      experienceId: "exp_1",
+      creatorUserId: "creator_1",
+      requesterUserName: "user_1",
+      requestTypeTitle: "Quick question",
+    });
+  });
 });

@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await whopSdk.users.retrieve(viewerUserId);
-    const viewerUserName = user.username?.trim() || user.name?.trim() || viewerUserId;
+    const viewerUserName = user.username?.trim() || viewerUserId;
 
     const quote = await convex.query(api.payments.getRequestTypeQuote, {
       experienceId: parsed.data.experienceId,

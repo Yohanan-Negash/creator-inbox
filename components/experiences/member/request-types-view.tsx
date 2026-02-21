@@ -29,7 +29,7 @@ export function RequestTypesView({ requestTypes, onOpenSubmitDialog }: RequestTy
     <section className="flex flex-col gap-3">
       <div>
         <h2 className="text-sm font-medium sm:text-base">Available requests</h2>
-        <p className="text-xs text-zinc-500">Pick one to submit your request.</p>
+        <p className="text-xs text-muted-foreground">Pick one to submit your request.</p>
       </div>
 
       {requestTypes.length === 0 ? (
@@ -60,12 +60,12 @@ export function RequestTypesView({ requestTypes, onOpenSubmitDialog }: RequestTy
                   ) : (
                     <span className="font-medium text-primary">${item.price.toFixed(2)}</span>
                   )}
-                  <span className="text-zinc-400"> · </span>
-                  <span className="text-amber-600">{item.responseWindowHours}h response window</span>
+                  <span className="text-muted-foreground"> · </span>
+                  <span className="text-foreground/80">{item.responseWindowHours}h response window</span>
                 </p>
               </CardContent>
               <CardFooter className="mt-auto flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-muted-foreground">
                   {item.allowAttachments ? "Text response + optional attachment" : "Text response only"}
                 </p>
                 <Button size="sm" className="w-full sm:w-auto" onClick={() => onOpenSubmitDialog(item)}>

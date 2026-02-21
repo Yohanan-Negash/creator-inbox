@@ -29,3 +29,12 @@
 - **Symptom**: users see internal provider/runtime language in error banners or dialogs.
 - **Cause**: route returns raw exception messages or client uses thrown `Error.message` directly.
 - **Fix**: return generic retry-oriented copy for `500` responses (for example, `Please try again later.`) and rely on structured server logs for technical diagnostics.
+
+## Checkout succeeds but submission remains `pending`
+
+- **Symptom**: member completes hosted checkout but `/api/whop/payments/submission-status` keeps returning `pending`.
+- **Cause**: provider payment id is not yet linked to the attempt and fallback lookup cannot resolve by checkout id.
+- **Fix**:
+  - ensure `receiptId` from checkout `onComplete` is passed to status endpoint
+  - verify webhook delivery and signature config (`WHOP_WEBHOOK_SECRET`)
+  - ensure `WHOP_COMPANY_ID` is set for list-based reconciliation fallback in stale-attempt workflows

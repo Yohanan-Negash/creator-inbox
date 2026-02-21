@@ -426,6 +426,62 @@ export const findPendingPaymentForUser = query({
   },
 });
 
+export const listSubmissionPaymentUserNamesForBackfill = internalQuery({
+  args: {
+    paginationOpts: v.object({
+      numItems: v.number(),
+      cursor: v.union(v.string(), v.null()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const paginated = await ctx.db
+      .query("submissionPayments")
+      .order("desc")
+      .paginate(args.paginationOpts);
+
+    return {
+      page: paginated.page.map((payment) => ({
+        submissionPaymentId: payment._id,
+        viewerUserId: payment.viewerUserId,
+        viewerUserName: payment.viewerUserName,
+      })),
+      continueCursor: paginated.continueCursor,
+      isDone: paginated.isDone,
+    };
+  },
+});
+
+export const applySubmissionPaymentUserNameBackfill = internalMutation({
+  args: {
+    updates: v.array(
+      v.object({
+        submissionPaymentId: v.id("submissionPayments"),
+        viewerUserName: v.string(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    let updatedCount = 0;
+
+    for (const update of args.updates) {
+      const row = await ctx.db.get(update.submissionPaymentId);
+      if (!row || row.viewerUserName === update.viewerUserName) {
+        continue;
+      }
+
+      await ctx.db.patch(row._id, {
+        viewerUserName: update.viewerUserName,
+      });
+      updatedCount += 1;
+    }
+
+    return {
+      attempted: args.updates.length,
+      updated: updatedCount,
+    };
+  },
+});
+
 export const getSubmissionPaymentStatusForUser = query({
   args: {
     submissionPaymentId: v.id("submissionPayments"),

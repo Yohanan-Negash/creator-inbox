@@ -102,19 +102,19 @@ export function SubmitRequestDialog({
             </DialogHeader>
 
             {submissionPending ? (
-              <div className="flex min-h-[200px] items-center justify-center">
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="size-6 animate-spin text-primary" />
-                  <p className="text-sm text-zinc-500">Confirming payment...</p>
+                <div className="flex min-h-[200px] items-center justify-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="size-6 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Confirming payment...</p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="min-h-[300px]">
-                <WhopCheckoutEmbed
-                  sessionId={checkoutSessionId!}
-                  theme="dark"
-                  returnUrl={checkoutReturnUrl ?? undefined}
-                  onComplete={(planId, receiptId) => onCheckoutComplete(planId, receiptId)}
+              ) : (
+                <div className="min-h-[300px]">
+                  <WhopCheckoutEmbed
+                    sessionId={checkoutSessionId!}
+                    theme="system"
+                    returnUrl={checkoutReturnUrl ?? undefined}
+                    onComplete={(planId, receiptId) => onCheckoutComplete(planId, receiptId)}
                   fallback={
                     <div className="flex min-h-[200px] items-center justify-center">
                       <Loader2 className="size-6 animate-spin text-primary" />
@@ -124,7 +124,7 @@ export function SubmitRequestDialog({
               </div>
             )}
 
-            {submissionError ? <p className="text-xs text-red-600">{submissionError}</p> : null}
+            {submissionError ? <p className="text-xs text-destructive">{submissionError}</p> : null}
 
             {!submissionPending ? (
               <DialogFooter>
@@ -144,8 +144,8 @@ export function SubmitRequestDialog({
             </DialogHeader>
 
             {selectedRequestType ? (
-              <div className="rounded-none border border-zinc-200 p-2 text-xs text-zinc-600">
-                <p className="font-medium text-zinc-800">{selectedRequestType.title}</p>
+              <div className="rounded-none border border-border p-2 text-xs text-muted-foreground">
+                <p className="font-medium text-foreground">{selectedRequestType.title}</p>
                 <p>
                   {selectedRequestType.price === 0
                     ? "This request is free and will be submitted instantly."
@@ -166,8 +166,8 @@ export function SubmitRequestDialog({
                 className="min-h-28"
                 disabled={submissionPending}
               />
-              <p className="text-[11px] text-zinc-500">Minimum 5 characters.</p>
-              {submissionError ? <p className="text-xs text-red-600">{submissionError}</p> : null}
+              <p className="text-[11px] text-muted-foreground">Minimum 5 characters.</p>
+              {submissionError ? <p className="text-xs text-destructive">{submissionError}</p> : null}
             </div>
 
             {selectedRequestType?.allowAttachments ? (
@@ -188,13 +188,13 @@ export function SubmitRequestDialog({
                       }
                       event.currentTarget.value = "";
                     }}
-                    className="text-xs file:mr-2 file:border file:border-zinc-300 file:bg-white file:px-2 file:py-1 file:text-xs"
+                    className="text-xs file:mr-2 file:border file:border-border file:bg-background file:px-2 file:py-1 file:text-xs"
                   />
                 ) : (
-                  <div className="flex items-center justify-between gap-2 border border-zinc-200 p-2 text-xs text-zinc-700">
+                  <div className="flex items-center justify-between gap-2 border border-border p-2 text-xs text-foreground">
                     <div className="min-w-0">
                       <p className="truncate font-medium">{pendingAttachment.fileName}</p>
-                      <p className="text-zinc-500">{formatFileSize(pendingAttachment.sizeBytes)}</p>
+                      <p className="text-muted-foreground">{formatFileSize(pendingAttachment.sizeBytes)}</p>
                     </div>
                     <div className="flex items-center gap-1">
                       {pendingAttachment.downloadUrl ? (
@@ -222,17 +222,17 @@ export function SubmitRequestDialog({
                     </div>
                   </div>
                 )}
-                <p className="text-[11px] text-zinc-500">PDF, JPG, PNG up to 10MB. 1 file max.</p>
+                <p className="text-[11px] text-muted-foreground">PDF, JPG, PNG up to 10MB. 1 file max.</p>
                 {attachmentPending ? (
-                  <p className="inline-flex items-center gap-1 text-xs text-zinc-500">
+                  <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                     <Loader2 className="size-3 animate-spin" />
                     Uploading attachment...
                   </p>
                 ) : null}
-                {attachmentError ? <p className="text-xs text-red-600">{attachmentError}</p> : null}
+                {attachmentError ? <p className="text-xs text-destructive">{attachmentError}</p> : null}
               </div>
             ) : (
-              <p className="inline-flex items-center gap-1 text-[11px] text-zinc-500">
+              <p className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                 <Paperclip className="size-3" />
                 Attachments are disabled for this request type.
               </p>

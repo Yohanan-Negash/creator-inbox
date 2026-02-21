@@ -20,6 +20,30 @@ type StalePendingAttempt = {
   reconcileAttempts: number;
 };
 
+type SubmissionUserNameBackfillRow = {
+  submissionId: Id<"submissions">;
+  userId: string;
+  userName: string;
+};
+
+type SubmissionUserNameBackfillPage = {
+  page: SubmissionUserNameBackfillRow[];
+  continueCursor: string;
+  isDone: boolean;
+};
+
+type SubmissionPaymentUserNameBackfillRow = {
+  submissionPaymentId: Id<"submissionPayments">;
+  viewerUserId: string;
+  viewerUserName: string;
+};
+
+type SubmissionPaymentUserNameBackfillPage = {
+  page: SubmissionPaymentUserNameBackfillRow[];
+  continueCursor: string;
+  isDone: boolean;
+};
+
 function getPlatformCompanyIdForReconciliation() {
   const companyId = process.env.WHOP_COMPANY_ID?.trim() ?? "";
   if (!companyId || !companyId.startsWith("biz_")) {
@@ -64,6 +88,124 @@ async function notifyAdminSubmissionCreatedFromCron(args: {
     icon_user_id: args.creatorUserId,
   });
 }
+
+export const backfillWhopUserNames = internalAction({
+  args: {
+    submissionCursor: v.optional(v.string()),
+    submissionPaymentCursor: v.optional(v.string()),
+    batchSize: v.optional(v.number()),
+    dryRun: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const batchSize = Math.min(Math.max(Math.trunc(args.batchSize ?? 100), 1), 500);
+    const dryRun = args.dryRun === true;
+
+    const submissionPage = (await ctx.runQuery(internal.submissions.listSubmissionUserNamesForBackfill, {
+      paginationOpts: {
+        numItems: batchSize,
+        cursor: args.submissionCursor ?? null,
+      },
+    })) as SubmissionUserNameBackfillPage;
+
+    const submissionPaymentPage = (await ctx.runQuery(
+      internal.payments.listSubmissionPaymentUserNamesForBackfill,
+      {
+        paginationOpts: {
+          numItems: batchSize,
+          cursor: args.submissionPaymentCursor ?? null,
+        },
+      },
+    )) as SubmissionPaymentUserNameBackfillPage;
+
+    const userIds = Array.from(
+      new Set([
+        ...submissionPage.page.map((row) => row.userId),
+        ...submissionPaymentPage.page.map((row) => row.viewerUserId),
+      ]),
+    );
+
+    const whopSdk = getWhopSdk();
+    const canonicalUserNameByUserId = new Map<string, string>();
+    const fallbackToUserId = new Set<string>();
+
+    for (const userId of userIds) {
+      let canonicalUserName = userId;
+
+      try {
+        const user = (await whopSdk.users.retrieve(userId)) as { username?: string | null };
+        const normalizedUserName = user.username?.trim() ?? "";
+        if (normalizedUserName) {
+          canonicalUserName = normalizedUserName;
+        }
+      } catch {
+        // Fallback to user id when user lookup fails.
+      }
+
+      if (canonicalUserName === userId) {
+        fallbackToUserId.add(userId);
+      }
+
+      canonicalUserNameByUserId.set(userId, canonicalUserName);
+    }
+
+    const submissionUpdates = submissionPage.page.flatMap((row) => {
+      const canonicalUserName = canonicalUserNameByUserId.get(row.userId) ?? row.userId;
+      if (canonicalUserName === row.userName) {
+        return [];
+      }
+
+      return [
+        {
+          submissionId: row.submissionId,
+          userName: canonicalUserName,
+        },
+      ];
+    });
+
+    const submissionPaymentUpdates = submissionPaymentPage.page.flatMap((row) => {
+      const canonicalUserName = canonicalUserNameByUserId.get(row.viewerUserId) ?? row.viewerUserId;
+      if (canonicalUserName === row.viewerUserName) {
+        return [];
+      }
+
+      return [
+        {
+          submissionPaymentId: row.submissionPaymentId,
+          viewerUserName: canonicalUserName,
+        },
+      ];
+    });
+
+    if (!dryRun && submissionUpdates.length > 0) {
+      await ctx.runMutation(internal.submissions.applySubmissionUserNameBackfill, {
+        updates: submissionUpdates,
+      });
+    }
+
+    if (!dryRun && submissionPaymentUpdates.length > 0) {
+      await ctx.runMutation(internal.payments.applySubmissionPaymentUserNameBackfill, {
+        updates: submissionPaymentUpdates,
+      });
+    }
+
+    return {
+      dryRun,
+      batchSize,
+      usersResolved: userIds.length,
+      usersFellBackToId: fallbackToUserId.size,
+      submissionBatchCount: submissionPage.page.length,
+      submissionUpdates: submissionUpdates.length,
+      nextSubmissionCursor: submissionPage.isDone ? null : submissionPage.continueCursor,
+      submissionIsDone: submissionPage.isDone,
+      submissionPaymentBatchCount: submissionPaymentPage.page.length,
+      submissionPaymentUpdates: submissionPaymentUpdates.length,
+      nextSubmissionPaymentCursor: submissionPaymentPage.isDone
+        ? null
+        : submissionPaymentPage.continueCursor,
+      submissionPaymentIsDone: submissionPaymentPage.isDone,
+    };
+  },
+});
 
 export const reconcileStalePendingPaymentAttempts = internalAction({
   args: {

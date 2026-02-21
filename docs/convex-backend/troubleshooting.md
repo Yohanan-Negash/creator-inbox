@@ -23,3 +23,9 @@
 - **Symptom**: archive/update/delete throws unauthorized.
 - **Cause**: `viewerUserId` differs from request type `creatorId`.
 - **Fix**: Ensure correct user identity is passed from validated Whop access context.
+
+## Admin dashboard still shows full names instead of usernames
+
+- **Symptom**: submission rows show profile names where username should be primary.
+- **Cause**: legacy snapshot rows predate username-first write behavior.
+- **Fix**: run `paymentsReconcile:backfillWhopUserNames` in batches (start with `dryRun: true`, then execute with returned cursors until both tables report `isDone=true`).

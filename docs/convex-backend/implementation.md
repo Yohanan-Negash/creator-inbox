@@ -101,6 +101,20 @@
 - Rebuilds per creator/experience totals.
 - Re-inserts projection rows and returns rebuild stats.
 
+### `backfillWhopUserNames` (internal action)
+
+- Lives in `paymentsReconcile.ts` and backfills username snapshots in both:
+  - `submissions.userName`
+  - `submissionPayments.viewerUserName`
+- Resolves canonical username from Whop using stored `userId` / `viewerUserId`.
+- Falls back to user id when username lookup fails or username is missing.
+- Supports resumable cursor-based batches and `dryRun` mode.
+- Uses paired internal helpers:
+  - `submissions.listSubmissionUserNamesForBackfill`
+  - `submissions.applySubmissionUserNameBackfill`
+  - `payments.listSubmissionPaymentUserNamesForBackfill`
+  - `payments.applySubmissionPaymentUserNameBackfill`
+
 ## Important Invariants
 
 - Every status transition that impacts KPI cards must include a matching projection delta update.

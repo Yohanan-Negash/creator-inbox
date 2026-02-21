@@ -7,7 +7,7 @@ related: [architecture, frontend-experience, testing-ci]
 
 # Convex Backend
 
-**Version:** 1.0 | **Last Updated:** 2026-02-08
+**Version:** 1.0 | **Last Updated:** 2026-02-20
 
 ## Quick Reference
 

@@ -87,18 +87,18 @@ export function RequestTypesManagement({
       </CardHeader>
       <CardContent className="grid gap-3">
         {requestTypes === undefined ? (
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
             Loading requests...
           </div>
         ) : null}
 
         {requestTypes !== undefined && requestTypes.length === 0 ? (
-          <p className="text-xs text-zinc-500">No requests yet.</p>
+          <p className="text-xs text-muted-foreground">No requests yet.</p>
         ) : null}
 
-        {statusError ? <p className="text-xs text-red-600">{statusError}</p> : null}
-        {deleteError ? <p className="text-xs text-red-600">{deleteError}</p> : null}
+        {statusError ? <p className="text-xs text-destructive">{statusError}</p> : null}
+        {deleteError ? <p className="text-xs text-destructive">{deleteError}</p> : null}
 
         {requestTypes && requestTypes.length > 0 ? (
           <div className="grid gap-3">
@@ -111,12 +111,12 @@ export function RequestTypesManagement({
               return (
                 <div
                   key={itemId}
-                  className="flex flex-col gap-3 border border-zinc-200 p-3 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-3 border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="space-y-1">
                     <p className="text-sm font-medium">{item.title}</p>
-                    <p className="text-xs text-zinc-500">{item.description}</p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-muted-foreground">{item.description}</p>
+                    <p className="text-xs text-muted-foreground">
                       {item.price === 0 ? (
                         <Badge variant="secondary" className="mr-1 align-middle">
                           Free
@@ -140,12 +140,12 @@ export function RequestTypesManagement({
                       Edit
                     </Button>
                     <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start">
-                      {isRowBusy ? <Loader2 className="size-4 animate-spin text-zinc-500" /> : null}
+                      {isRowBusy ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
                       <div className="flex items-center gap-2">
                         <Button
                           size="icon-sm"
                           variant="outline"
-                          className="border-primary bg-white text-red-600 hover:bg-primary/5 hover:text-red-700"
+                          className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
                           onClick={() => onSetDeleteConfirmId(item._id)}
                           disabled={isRowBusy}
                           aria-label={`Delete ${item.title}`}
@@ -223,7 +223,7 @@ export function RequestTypesManagement({
             <AlertDialogFooter>
               <AlertDialogCancel disabled={Boolean(deletePendingId)}>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                className="bg-destructive text-white hover:bg-destructive/90"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={onConfirmDelete}
                 disabled={Boolean(deletePendingId)}
               >

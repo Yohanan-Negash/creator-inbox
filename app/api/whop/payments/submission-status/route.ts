@@ -6,8 +6,118 @@ import { getWhopSdk } from "@/lib/whop";
 import { getConvexServerClient } from "@/lib/convex-server";
 import {
   extractWhopPaymentStatus,
+  getSubmissionPaymentIdFromPayment,
+  getWhopCheckoutConfigurationIdFromPayment,
+  getWhopPaymentId,
 } from "@/lib/whop-payments";
 import { notifyAdminSubmissionCreated } from "@/lib/whop-notifications";
+
+type SubmissionPaymentStatus = {
+  submissionPaymentId: string;
+  status: "pending" | "paid" | "failed" | "refunded";
+  submissionId: string | null;
+  lastError: string | null;
+  whopPaymentId: string | null;
+  whopCheckoutConfigurationId: string | null;
+  expiresAt: number | null;
+};
+
+function getPlatformCompanyIdForLookup() {
+  const companyId = process.env.WHOP_COMPANY_ID?.trim() ?? "";
+  if (!companyId || !companyId.startsWith("biz_")) {
+    return null;
+  }
+
+  return companyId;
+}
+
+async function resolveProviderPayment(args: {
+  whopSdk: ReturnType<typeof getWhopSdk>;
+  route: string;
+  experienceId: string;
+  submissionPaymentId: string;
+  status: SubmissionPaymentStatus;
+  receiptId: string | null;
+}) {
+  const payments = (args.whopSdk as {
+    payments: {
+      retrieve?: (id: string) => Promise<unknown>;
+      list?: (input: unknown) => AsyncIterable<unknown>;
+    };
+  }).payments;
+
+  if (args.status.whopPaymentId && payments.retrieve) {
+    return await payments.retrieve(args.status.whopPaymentId);
+  }
+
+  if (args.receiptId && payments.retrieve) {
+    try {
+      const fromReceipt = await payments.retrieve(args.receiptId);
+      if (fromReceipt) {
+        return fromReceipt;
+      }
+    } catch (error) {
+      logger.info("Submission status receipt lookup skipped", {
+        route: args.route,
+        method: "GET",
+        event: "whop.payment.status.receipt_lookup_skipped",
+        experienceId: args.experienceId,
+        submissionPaymentId: args.submissionPaymentId,
+        receiptId: args.receiptId,
+        errorMessage: getSafeErrorMessage(error),
+      });
+    }
+  }
+
+  if (!args.status.whopCheckoutConfigurationId || !payments.list) {
+    return null;
+  }
+
+  const companyId = getPlatformCompanyIdForLookup();
+  if (!companyId) {
+    return null;
+  }
+
+  try {
+    const list = payments.list({
+      company_id: companyId,
+      statuses: ["draft", "open", "pending", "paid", "void", "uncollectible", "unresolved"],
+      direction: "desc",
+      order: "created_at",
+      first: 200,
+    });
+
+    let seen = 0;
+    for await (const payment of list) {
+      seen += 1;
+      if (seen > 200) {
+        break;
+      }
+
+      const paymentAttemptId = getSubmissionPaymentIdFromPayment(payment);
+      if (paymentAttemptId && paymentAttemptId === args.submissionPaymentId) {
+        return payment;
+      }
+
+      const paymentCheckoutId = getWhopCheckoutConfigurationIdFromPayment(payment);
+      if (paymentCheckoutId && paymentCheckoutId === args.status.whopCheckoutConfigurationId) {
+        return payment;
+      }
+    }
+  } catch (error) {
+    logger.info("Submission status list reconciliation skipped", {
+      route: args.route,
+      method: "GET",
+      event: "whop.payment.status.list_lookup_skipped",
+      experienceId: args.experienceId,
+      submissionPaymentId: args.submissionPaymentId,
+      checkoutConfigurationId: args.status.whopCheckoutConfigurationId,
+      errorMessage: getSafeErrorMessage(error),
+    });
+  }
+
+  return null;
+}
 
 async function completePaymentAndNotify(
   convex: ReturnType<typeof getConvexServerClient>,
@@ -34,6 +144,7 @@ async function completePaymentAndNotify(
 export async function GET(request: NextRequest) {
   const experienceId = request.nextUrl.searchParams.get("experienceId") ?? "";
   const submissionPaymentId = request.nextUrl.searchParams.get("attemptId") ?? "";
+  const receiptId = request.nextUrl.searchParams.get("receiptId") ?? "";
   const devUserToken = request.nextUrl.searchParams.get("whop-dev-user-token") ?? "";
   const route = "/api/whop/payments/submission-status";
 
@@ -55,10 +166,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    let status = await convex.query(api.payments.getSubmissionPaymentStatusForUser, {
+    let status = (await convex.query(api.payments.getSubmissionPaymentStatusForUser, {
       submissionPaymentId: submissionPaymentId as never,
       viewerUserId,
-    });
+    })) as SubmissionPaymentStatus | null;
 
     if (!status) {
       return NextResponse.json(
@@ -80,10 +191,25 @@ export async function GET(request: NextRequest) {
           errorMessage: "Checkout session expired.",
         });
       } else {
-        if (status.whopPaymentId) {
-          const payment = await (whopSdk as {
-            payments: { retrieve: (id: string) => Promise<unknown> };
-          }).payments.retrieve(status.whopPaymentId);
+        const payment = await resolveProviderPayment({
+          whopSdk,
+          route,
+          experienceId,
+          submissionPaymentId,
+          status,
+          receiptId: receiptId || null,
+        });
+
+        if (payment) {
+          const resolvedPaymentId = getWhopPaymentId(payment);
+          if (resolvedPaymentId && resolvedPaymentId !== status.whopPaymentId) {
+            await convex.mutation(api.payments.attachWhopPaymentIdToSubmissionPayment, {
+              submissionPaymentId: submissionPaymentId as never,
+              whopPaymentId: resolvedPaymentId,
+              whopCheckoutConfigurationId: status.whopCheckoutConfigurationId ?? undefined,
+            });
+          }
+
           const paymentStatus = extractWhopPaymentStatus(payment);
 
           if (paymentStatus === "paid") {
@@ -99,10 +225,10 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      status = await convex.query(api.payments.getSubmissionPaymentStatusForUser, {
+      status = (await convex.query(api.payments.getSubmissionPaymentStatusForUser, {
         submissionPaymentId: submissionPaymentId as never,
         viewerUserId,
-      });
+      })) as SubmissionPaymentStatus | null;
     }
 
     return NextResponse.json(

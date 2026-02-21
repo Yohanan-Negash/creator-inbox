@@ -28,6 +28,7 @@ import { RequestTypeFormDialog } from "@/components/experiences/admin/request-ty
 import { RequestTypesManagement } from "@/components/experiences/admin/request-types-management";
 import { MetricsSubmissionsSection } from "@/components/experiences/admin/metrics-submissions-section";
 import { AnswerSubmissionDialog } from "@/components/experiences/admin/answer-submission-dialog";
+import { ThemeToggle } from "@/components/experiences/shared/theme-toggle";
 import {
   fetchAdminData,
   fetchAdminSubmissionsPage,
@@ -772,7 +773,7 @@ export default function AdminPageClient({
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
-      <header className="flex flex-col gap-3 border-b border-zinc-200 pb-3 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-3 border-b border-border pb-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="mb-1 inline-flex items-center gap-2 border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-primary">
             <Shield className="size-4" />
@@ -787,7 +788,7 @@ export default function AdminPageClient({
             className={`w-full sm:w-auto ${
               activeView === "metrics"
                 ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary"
-                : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                : "border-border text-muted-foreground hover:bg-muted"
             }`}
             disabled={viewTransitionPending}
             onClick={() => {
@@ -850,6 +851,7 @@ export default function AdminPageClient({
           >
             Home Page
           </Button>
+          <ThemeToggle />
         </div>
       </header>
 
@@ -899,10 +901,10 @@ export default function AdminPageClient({
             onGoToNextSubmissionsPage={handleGoToNextSubmissionsPage}
           />
 
-          {refundSuccess ? <p className="text-xs text-emerald-700">{refundSuccess}</p> : null}
-          {refundError ? <p className="text-xs text-red-600">{refundError}</p> : null}
+          {refundSuccess ? <p className="text-xs text-primary">{refundSuccess}</p> : null}
+          {refundError ? <p className="text-xs text-destructive">{refundError}</p> : null}
           {submissionDeleteError ? (
-            <p className="text-xs text-red-600">{submissionDeleteError}</p>
+            <p className="text-xs text-destructive">{submissionDeleteError}</p>
           ) : null}
           <AnswerSubmissionDialog
             experienceId={experienceId}

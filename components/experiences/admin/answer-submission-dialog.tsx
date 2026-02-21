@@ -81,14 +81,14 @@ export function AnswerSubmissionDialog({
 
           <div className="grid gap-1.5">
             <p className="text-xs font-medium">Member request</p>
-            <div className="min-h-20 whitespace-pre-wrap rounded-none border border-zinc-200 p-3 text-xs text-zinc-700">
+            <div className="min-h-20 whitespace-pre-wrap rounded-none border border-border p-3 text-xs text-foreground">
               {selectedSubmission?.submissionText?.trim() || "No submission text available."}
             </div>
             {selectedSubmission?.attachment ? (
-              <div className="flex items-center justify-between gap-2 border border-zinc-200 p-2 text-xs text-zinc-700">
+              <div className="flex items-center justify-between gap-2 border border-border p-2 text-xs text-foreground">
                 <div className="min-w-0">
                   <p className="truncate font-medium">{selectedSubmission.attachment.fileName}</p>
-                  <p className="text-zinc-500">Attachment</p>
+                  <p className="text-muted-foreground">Attachment</p>
                 </div>
                 {selectedSubmission.attachment.downloadUrl ? (
                   <Button
@@ -121,16 +121,16 @@ export function AnswerSubmissionDialog({
                   placeholder="Write a clear response for this submission..."
                   disabled={answerPending}
                 />
-                <p className="text-[11px] text-zinc-500">
+                <p className="text-[11px] text-muted-foreground">
                   Minimum {MIN_RESPONSE_CHARACTERS} characters.
                 </p>
               </>
             ) : (
-              <div className="min-h-28 whitespace-pre-wrap rounded-none border border-zinc-200 p-3 text-xs text-zinc-700">
+              <div className="min-h-28 whitespace-pre-wrap rounded-none border border-border p-3 text-xs text-foreground">
                 {selectedSubmission?.responseText?.trim() || "No response available."}
               </div>
             )}
-            {answerError ? <p className="text-xs text-red-600">{answerError}</p> : null}
+            {answerError ? <p className="text-xs text-destructive">{answerError}</p> : null}
           </div>
 
           <DialogFooter>

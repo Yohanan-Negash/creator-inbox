@@ -3,7 +3,7 @@
 ## Member Components
 
 - `app/experiences/[experienceId]/experience-page-client.tsx`
-  - client-side interaction layer for submission flow, pagination, free-submit handling, and checkout polling by immutable payment `attemptId`
+  - client-side interaction layer for submission flow, pagination, free-submit handling, and webhook-first checkout confirmation by immutable payment `attemptId`
 - `components/experiences/member/member-header.tsx`
   - view toggle and admin navigation button
 - `components/experiences/member/request-types-view.tsx`
@@ -35,6 +35,15 @@
   - `getStatusPillClass`
 - `components/experiences/shared/page-loading-state.tsx`
   - reusable route transition loading spinner UI
+
+## Theme Inheritance (Light/Dark)
+
+- Root layout wraps app content with `next-themes` via `components/theme-provider.tsx`.
+- `ThemeProvider` is configured with `attribute="class"`, `defaultTheme="system"`, `enableSystem`.
+- `<html>` in `app/layout.tsx` must keep `suppressHydrationWarning` to avoid class mismatch warnings.
+- Experience/admin/member surfaces should use semantic Tailwind tokens (`bg-background`, `text-foreground`, `border-border`, `text-muted-foreground`) instead of hardcoded `zinc` or `white` classes.
+- Embedded Whop checkout in `submit-request-dialog.tsx` uses `theme="system"` so checkout follows user preference.
+- Theme controls are rendered in both member/admin headers through `components/experiences/shared/theme-toggle.tsx` as a single cycling control (System -> Light -> Dark) with active theme icon/label.
 
 ## Route Responsibilities (Do Not Drift)
 

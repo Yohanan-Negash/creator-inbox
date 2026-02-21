@@ -146,7 +146,7 @@ export function MetricsSubmissionsSection({
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Balance Available</CardDescription>
+            <CardDescription>Money Available</CardDescription>
             <CardTitle className="text-primary">${balanceAvailable.toFixed(2)}</CardTitle>
             <Button
               type="button"
@@ -162,10 +162,13 @@ export function MetricsSubmissionsSection({
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Money Available</CardDescription>
-            <CardTitle className="text-amber-600">
+            <CardDescription>Pending to Earn</CardDescription>
+            <CardTitle className="text-foreground">
               ${(metrics?.moneyAvailable ?? 0).toFixed(2)}
             </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Answer pending requests before their deadline to move this into Money Available.
+            </p>
           </CardHeader>
         </Card>
       </div>
@@ -174,19 +177,19 @@ export function MetricsSubmissionsSection({
         <CardHeader>
           <CardTitle>Submissions</CardTitle>
           <CardDescription>
-            Click a pending row to answer it, or an answered row to view its response.
+            Click a pending row to answer it before the deadline so the amount moves into Money Available. Click an answered row to view its response.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           {dashboardSubmissions === undefined ? (
-            <div className="flex items-center gap-2 text-xs text-zinc-500">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
               Loading submissions...
             </div>
           ) : null}
 
           {dashboardSubmissions !== undefined && dashboardSubmissions.length === 0 ? (
-            <p className="text-xs text-zinc-500">No submissions yet.</p>
+            <p className="text-xs text-muted-foreground">No submissions yet.</p>
           ) : null}
 
           {dashboardSubmissions && dashboardSubmissions.length > 0 ? (
@@ -202,7 +205,7 @@ export function MetricsSubmissionsSection({
                     submission.amountUsd > 0;
 
                   return (
-                    <div key={String(submission._id)} className="grid gap-2 border border-zinc-200 p-3">
+                    <div key={String(submission._id)} className="grid gap-2 border border-border p-3">
                       <button
                         type="button"
                         className={`grid gap-2 text-left ${canOpenResponse ? "cursor-pointer" : ""}`}
@@ -213,25 +216,25 @@ export function MetricsSubmissionsSection({
                           onOpenAnswerDialog(submission._id);
                         }}
                       >
-                        <p className="text-sm font-medium text-zinc-900">{submission.requestTypeLabel}</p>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+                        <p className="text-sm font-medium text-foreground">{submission.requestTypeLabel}</p>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <span>{submission.userName}</span>
                           <span
                             className={`inline-flex rounded-none border px-2 py-0.5 text-[11px] ${getStatusPillClass(submission.status)}`}
                           >
                             {submission.status}
                           </span>
-                          <span className="font-medium text-zinc-900">${submission.amountUsd.toFixed(2)}</span>
+                          <span className="font-medium text-foreground">${submission.amountUsd.toFixed(2)}</span>
                         </div>
-                        <p className="text-xs text-zinc-600">Created: {formatDateTime(submission.createdAt)}</p>
-                        <p className="text-xs text-zinc-600">
+                        <p className="text-xs text-muted-foreground">Created: {formatDateTime(submission.createdAt)}</p>
+                        <p className="text-xs text-muted-foreground">
                           Deadline:{" "}
                           {submission.status === "pending" && !submission.isWithinResponseWindow
                             ? "Expired window"
                             : formatDateTime(submission.deadlineAt)}
                         </p>
                         {submission.attachment ? (
-                          <div className="inline-flex items-center gap-1 text-xs text-zinc-600">
+                          <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                             <Paperclip className="size-3" />
                             {submission.attachment.downloadUrl ? (
                               <a
@@ -251,18 +254,18 @@ export function MetricsSubmissionsSection({
 
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         {canRefundSubmission ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
-                            disabled={refundPendingId === submission._id}
-                            onClick={() => onRefundSubmission(submission._id)}
-                          >
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              disabled={refundPendingId === submission._id}
+                              onClick={() => onRefundSubmission(submission._id)}
+                            >
                             {refundPendingId === submission._id ? "Refunding..." : "Refund"}
                           </Button>
                         ) : (
-                          <span className="text-xs text-zinc-500">&nbsp;</span>
+                          <span className="text-xs text-muted-foreground">&nbsp;</span>
                         )}
 
                         <Button
@@ -347,12 +350,12 @@ export function MetricsSubmissionsSection({
                           <TableCell>
                             {canRefundSubmission ? (
                               <div className="flex items-center gap-2">
-                                <span className="text-red-600">Expired window</span>
+                                <span className="text-destructive">Expired window</span>
                                 <Button
                                   type="button"
                                   variant="outline"
                                   size="sm"
-                                  className="h-7 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                  className="h-7 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
                                   disabled={refundPendingId === submission._id}
                                   onClick={(event) => {
                                     event.stopPropagation();
@@ -415,7 +418,7 @@ export function MetricsSubmissionsSection({
                   />
                 </PaginationItem>
                 <PaginationItem>
-                  <span className="px-3 py-2 text-xs text-zinc-500">
+                  <span className="px-3 py-2 text-xs text-muted-foreground">
                     {submissionsPagePending ? "Loading page..." : `Page ${submissionsPage}`}
                   </span>
                 </PaginationItem>
@@ -445,32 +448,32 @@ export function MetricsSubmissionsSection({
                   You are cashing out your available balance with a transparent payout breakdown.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <div className="grid gap-2 border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
+              <div className="grid gap-2 border border-border bg-muted/40 p-3 text-xs text-foreground">
                 <div className="flex items-center justify-between">
                   <span>Available balance</span>
-                  <span className="font-medium text-zinc-900">
+                  <span className="font-medium text-foreground">
                     ${cashoutBreakdown.grossAmountUsd.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>App fee ({APP_FEE_PERCENT}%)</span>
-                  <span className="font-medium text-zinc-900">
+                  <span className="font-medium text-foreground">
                     -${cashoutBreakdown.appFeeUsd.toFixed(2)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-zinc-500">
+                <div className="flex items-center justify-between text-muted-foreground">
                   <span>Payment fees</span>
                   <span>Included in app fee</span>
                 </div>
-                <div className="h-px bg-zinc-200" />
+                <div className="h-px bg-border" />
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-zinc-900">You receive ({CREATOR_PAYOUT_PERCENT}%)</span>
+                  <span className="font-medium text-foreground">You receive ({CREATOR_PAYOUT_PERCENT}%)</span>
                   <span className="font-semibold text-primary">
                     ${cashoutBreakdown.creatorAmountUsd.toFixed(2)}
                   </span>
                 </div>
               </div>
-              {cashoutError ? <p className="text-xs text-red-600">{cashoutError}</p> : null}
+              {cashoutError ? <p className="text-xs text-destructive">{cashoutError}</p> : null}
               <AlertDialogFooter>
                 <AlertDialogCancel disabled={cashoutPending}>Cancel</AlertDialogCancel>
                 <AlertDialogAction
@@ -515,7 +518,7 @@ export function MetricsSubmissionsSection({
                   Cancel
                 </AlertDialogCancel>
                 <AlertDialogAction
-                  className="bg-destructive text-white hover:bg-destructive/90"
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={onConfirmDeleteSubmission}
                   disabled={
                     !submissionDeleteConfirmId || deletePendingId === submissionDeleteConfirmId

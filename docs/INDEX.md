@@ -1,7 +1,7 @@
 ---
 name: Creator Inbox Documentation
 description: Documentation hub for AI coding assistance - use progressive disclosure to find what you need
-last_updated: 2026-02-16
+last_updated: 2026-02-20
 ---
 
 # Documentation Index

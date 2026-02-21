@@ -93,7 +93,7 @@ export function SubmissionsView({
         <div className="flex min-h-[25vh] items-center justify-center p-6">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="size-6 animate-spin text-primary" />
-            <p className="text-sm text-zinc-500">Loading submissions...</p>
+            <p className="text-sm text-muted-foreground">Loading submissions...</p>
           </div>
         </div>
       </section>
@@ -112,7 +112,7 @@ export function SubmissionsView({
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="rounded-none border border-zinc-200 px-2 py-1 text-zinc-600">
+            <span className="rounded-none border border-border px-2 py-1 text-muted-foreground">
               {submissions?.length ?? 0} on this page
             </span>
           </div>
@@ -143,20 +143,20 @@ export function SubmissionsView({
                   type="button"
                   onClick={() => onOpenSubmissionDetails(submission._id)}
                   className={`grid gap-2 border p-3 text-left transition-colors ${
-                    isSelected ? "border-primary/40 bg-primary/5" : "border-zinc-200"
+                    isSelected ? "border-primary/40 bg-primary/5" : "border-border"
                   }`}
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium text-zinc-900">{submission.requestTypeLabel}</p>
+                    <p className="text-sm font-medium text-foreground">{submission.requestTypeLabel}</p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span
                       className={`inline-flex rounded-none border px-2 py-0.5 text-[11px] ${getStatusPillClass(submission.status)}`}
                     >
                       {submission.status}
                     </span>
                     <span>{formatDateTime(submission.createdAt)}</span>
-                    <span className="font-medium text-zinc-900">${submission.amountUsd.toFixed(2)}</span>
+                    <span className="font-medium text-foreground">${submission.amountUsd.toFixed(2)}</span>
                   </div>
                 </button>
               );
@@ -218,12 +218,12 @@ export function SubmissionsView({
               {selectedSubmission ? (
                 <>
                   <div>
-                    <p className="text-[11px] uppercase tracking-wide text-zinc-500">My request</p>
-                    <p className="text-xs text-zinc-700 whitespace-pre-wrap">
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">My request</p>
+                    <p className="text-xs text-foreground whitespace-pre-wrap">
                       {selectedSubmission.submissionText}
                     </p>
                     {selectedSubmission.attachment ? (
-                      <div className="mt-2 inline-flex items-center gap-1 text-xs text-zinc-600">
+                      <div className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <Paperclip className="size-3" />
                         {selectedSubmission.attachment.downloadUrl ? (
                           <a
@@ -240,20 +240,20 @@ export function SubmissionsView({
                     ) : null}
                   </div>
                   <div>
-                    <p className="text-[11px] uppercase tracking-wide text-zinc-500">
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
                       Creator response
                     </p>
                     {selectedSubmission.responseText ? (
-                      <p className="text-xs text-zinc-700 whitespace-pre-wrap">
+                      <p className="text-xs text-foreground whitespace-pre-wrap">
                         {selectedSubmission.responseText}
                       </p>
                     ) : (
-                      <p className="text-xs text-zinc-500">Awaiting creator response.</p>
+                      <p className="text-xs text-muted-foreground">Awaiting creator response.</p>
                     )}
                   </div>
                 </>
               ) : (
-                <p className="text-xs text-zinc-500">No submission selected.</p>
+                <p className="text-xs text-muted-foreground">No submission selected.</p>
               )}
             </CardContent>
           </Card>
@@ -276,7 +276,7 @@ export function SubmissionsView({
                   />
                 </PaginationItem>
                 <PaginationItem>
-                  <span className="px-3 py-2 text-xs text-zinc-500">
+                  <span className="px-3 py-2 text-xs text-muted-foreground">
                     {submissionsPagePending ? "Loading page..." : `Page ${submissionsPage}`}
                   </span>
                 </PaginationItem>
@@ -299,7 +299,7 @@ export function SubmissionsView({
           ) : null}
 
           {submissionsPageError ? (
-            <p className="text-xs text-red-600 lg:col-span-2">{submissionsPageError}</p>
+            <p className="text-xs text-destructive lg:col-span-2">{submissionsPageError}</p>
           ) : null}
         </div>
       ) : null}

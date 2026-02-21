@@ -126,8 +126,8 @@ export function RequestTypeFormDialog({
               placeholder="Ask me Anything"
               disabled={submitPending || generatePending}
             />
-            {fieldErrors.title ? <p className="text-xs text-red-600">{fieldErrors.title}</p> : null}
-            <p className="text-right text-[11px] text-zinc-500">
+            {fieldErrors.title ? <p className="text-xs text-destructive">{fieldErrors.title}</p> : null}
+            <p className="text-right text-[11px] text-muted-foreground">
               {formValues.title.length}/{REQUEST_TYPE_TITLE_MAX_LENGTH}
             </p>
           </div>
@@ -152,13 +152,13 @@ export function RequestTypeFormDialog({
               disabled={submitPending || generatePending}
             />
             {fieldErrors.description ? (
-              <p className="text-xs text-red-600">{fieldErrors.description}</p>
+              <p className="text-xs text-destructive">{fieldErrors.description}</p>
             ) : null}
             <p
               className={`text-right text-[11px] ${
                 formValues.description.length >= REQUEST_TYPE_DESCRIPTION_MAX_LENGTH
-                  ? "text-red-600"
-                  : "text-zinc-500"
+                  ? "text-destructive"
+                  : "text-muted-foreground"
               }`}
             >
               {formValues.description.length}/{REQUEST_TYPE_DESCRIPTION_MAX_LENGTH}
@@ -197,7 +197,7 @@ export function RequestTypeFormDialog({
               >
                 Make this free
               </Button>
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-muted-foreground">
                 Set price to $0 for free requests. {`Maximum price is $${REQUEST_TYPE_PRICE_MAX_USD}.`}
               </p>
             </div>
@@ -246,7 +246,7 @@ export function RequestTypeFormDialog({
               >
                 Use 24-hour default
               </Button>
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-muted-foreground">
                 How long members should expect to wait for your reply.
               </p>
             </div>
@@ -254,19 +254,19 @@ export function RequestTypeFormDialog({
 
           <div className="min-h-4">
             {fieldErrors.responseWindowHours ? (
-              <p className="text-xs text-red-600">{fieldErrors.responseWindowHours}</p>
+              <p className="text-xs text-destructive">{fieldErrors.responseWindowHours}</p>
             ) : fieldErrors.price ? (
-              <p className="text-xs text-red-600">{fieldErrors.price}</p>
+              <p className="text-xs text-destructive">{fieldErrors.price}</p>
             ) : null}
           </div>
 
-          <div className="grid gap-1.5 rounded-none border border-zinc-200 p-3">
+          <div className="grid gap-1.5 rounded-none border border-border p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="grid gap-1">
                 <label className="text-xs font-medium" htmlFor="request-type-allow-attachments">
                   Allow attachments
                 </label>
-                <p className="text-[11px] text-zinc-500">
+                <p className="text-[11px] text-muted-foreground">
                   Members can attach one file (PDF, JPG, PNG) up to 10MB.
                 </p>
               </div>
@@ -327,12 +327,12 @@ export function RequestTypeFormDialog({
                   "Create"
                 )}
               </Button>
-              {submitError ? <p className="text-xs text-red-600">{submitError}</p> : null}
+              {submitError ? <p className="text-xs text-destructive">{submitError}</p> : null}
             </div>
             <Button
               type="button"
               variant="outline"
-              className="w-full border-red-300 bg-white text-red-600 hover:bg-red-50 hover:text-red-700 sm:w-auto"
+              className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive sm:w-auto"
               onClick={onCloseDialog}
               disabled={submitPending}
             >
